@@ -24,6 +24,8 @@ from pyro.contrib.autoguide import AutoDelta, init_to_mean
 
 from tqdm import tqdm
 
+from pyoptmat import experiments
+
 def construct_weights(etypes, weights, normalize = True):
   """
     Construct an array of weights 
@@ -46,18 +48,14 @@ def construct_weights(etypes, weights, normalize = True):
 
   return warray
 
-def grid_search(model, time, strain, temperatures, stress, loss, bounds, 
+def grid_search(model, idata, loss, bounds, 
     ngrid, method = "lhs-maximin", save_grid = None,
-    rbf_function = "inverse"):
+    rbf_function = "inverse", nan_v = 1e20):
   """
     Use a coarse grid search to find a good starting point
 
     Args:
       model:                    forward model
-      time:                     time data
-      strain:                   strain data
-      temperature:              temperature data
-      stress:                   stress data
       loss:                     loss function
       bounds:                   bounds on each parameter
       ngrid:                    number of points
@@ -65,17 +63,15 @@ def grid_search(model, time, strain, temperatures, stress, loss, bounds,
       save_grid (optional):     save the parameter grid to a file for future use
       rbf_function (optional):  kernel for radial basis interpolation
   """
-  # It's wasteful to do the adjoint propagation here, disable it
-  use_adjoint = model.use_adjoint
-  model.use_adjoint = False
-
-  # Helpful later
-  device = list(bounds.values())[0][0].device
+  # Extract the data from the tuple
+  strain_data, strain_cycles, strain_types, stress_data, stress_cycles, stress_types = idata
 
   # Parameter order
   params = [(n, p.shape, torch.flatten(p).shape[0]) for n, p
       in list(model.named_parameters())]
   offsets = [0] + list(np.cumsum([i[2] for i in params]))
+
+  device = strain_data.device
   
   # Generate the space
   # Need to do this on the cpu
@@ -96,24 +92,25 @@ def grid_search(model, time, strain, temperatures, stress, loss, bounds,
       device = device)
   results = torch.zeros(samples.shape[0], device = samples.device)
 
+  exp_result = experiments.setup_experiment_vector(strain_data, stress_data)
+
   # Here we go
-  pdict = {n:p for n,p in model.named_parameters()}
+  pdict = {n:p for n,p in zip(model.names, model.get_params())}
   for i,sample in tqdm(enumerate(samples), total = len(samples),
       desc = "Grid sampling"):
     for k,(name, shp, sz) in enumerate(params):
-      pdict[name].data = samples[i][offsets[k]:offsets[k+1]].reshape(shp)
+      getattr(model,name).data = samples[i][offsets[k]:offsets[k+1]].reshape(shp)
     with torch.no_grad():
-      pred = model.solve_strain(time, strain, temperature)
-      lv = loss(pred[:,:,0], stress)
+      res = model(strain_data, strain_cycles, strain_types, stress_data, stress_cycles, stress_types)
+      lv = loss(res, exp_result)
       results[i] = lv
+  
+  results = torch.nan_to_num(results, nan = nan_v)
 
   data = torch.hstack((samples, results[:,None]))
   # Store the results if we want
   if save_grid is not None:
     torch.save(data, save_grid)
-
-  # Uncache
-  model.use_adjoint = use_adjoint
 
   # We now need to do this on the CPU again
   data = data.cpu().numpy()
@@ -129,7 +126,7 @@ def grid_search(model, time, strain, temperatures, stress, loss, bounds,
   # Setup the parameter dict and alter the model
   result = {}
   for k, (name, shp, sz) in enumerate(params):
-    pdict[name].data = torch.tensor(res.x[offsets[k]:offsets[k+1]]).reshape(shp).to(device)
+    getattr(model, name).data = torch.tensor(res.x[offsets[k]:offsets[k+1]]).reshape(shp).to(device)
     result[name] = res.x[offsets[k]:offsets[k+1]].reshape(shp)
   
   return result
@@ -144,6 +141,67 @@ def bounded_scale_function(bounds):
   """
   return lambda x: torch.clamp(x, 0, 1)*(bounds[1]-bounds[0]) + bounds[0]
 
+def clamp_scale_function(bounds):
+  """
+    Just clamps
+
+    Args:
+      bounds:   tuple giving the parameter bounds
+  """
+  return lambda x: torch.clamp(x, bounds[0], bounds[1])
+
+class DeterministicModelExperiment(Module):
+  """
+    Wrap a material model to provide a :py:mod:`pytorch` deterministic model
+
+    Args:
+      maker:      function that returns a valid Module, given the 
+                  input parameters
+      names:      names to use for the parameters
+      ics:        initial conditions to use for each parameter
+  """
+  def __init__(self, maker, names, ics, scale = 1000.0):
+    super().__init__()
+
+    self.maker = maker
+
+    self.names = names
+    
+    # Add all the parameters
+    self.params = names
+    for name, ic in zip(names, ics):
+      setattr(self, name, Parameter(ic))
+    
+    self.scale = scale
+
+  def get_params(self):
+    """
+      Return the parameters for input to the model
+    """
+    return [getattr(self, name) for name in self.params]
+
+  def forward(self, strain_data, strain_cycles, strain_types,
+      stress_data, stress_cycles, stress_types):
+    """
+      Integrate forward and return the results
+
+      Args:
+
+    """
+    model = self.maker(*self.get_params())
+
+    pred_strain = model.solve_strain(strain_data[0], strain_data[1],
+        strain_data[2])[:,:,0]
+    pred_stress = model.solve_stress(stress_data[0], stress_data[1],
+        stress_data[2])[:,:,0]
+
+    sim_results = experiments.assemble_results(
+        strain_data, strain_cycles, strain_types, pred_strain,
+        stress_data, stress_cycles, stress_types, pred_stress,
+        stress_scale = self.scale)
+    
+    return sim_results
+
 class DeterministicModel(Module):
   """
     Wrap a material model to provide a :py:mod:`pytorch` deterministic model
@@ -154,7 +212,7 @@ class DeterministicModel(Module):
       names:      names to use for the parameters
       ics:        initial conditions to use for each parameter
   """
-  def __init__(self, maker, names, ics):
+  def __init__(self, maker, names, ics, mode = "strain"):
     super().__init__()
 
     self.maker = maker
@@ -170,18 +228,21 @@ class DeterministicModel(Module):
     """
     return [getattr(self, name) for name in self.params]
 
-  def forward(self, times, strains, temperatures):
+  def forward(self, times, input_data, temperatures, mode = "strain"):
     """
-      Integrate forward and return the stress
+      Integrate forward and return the results
 
       Args:
         times:          time points to hit
-        strains:        input strain data
+        input_data:     input data
         temperatures:   input temperature data
     """
     model = self.maker(*self.get_params())
     
-    return model.solve_strain(times, strains, temperatures)[:,:,0]
+    if mode == "strain":
+      return model.solve_strain(times, input_data, temperatures)[:,:,0]
+    else:
+      return model.solve_stress(times, input_data, temperatures)[:,:,0]
 
 class StatisticalModel(PyroModule):
   """
@@ -217,7 +278,7 @@ class StatisticalModel(PyroModule):
     """
     return [getattr(self, name) for name in self.params]
 
-  def forward(self, times, strains, temperatures, true = None):
+  def forward(self, times, input_data, temperatures, true = None, mode = "strain"):
     """
       Integrate forward and return the result
 
@@ -231,10 +292,14 @@ class StatisticalModel(PyroModule):
                     model in inference
     """
     model = self.maker(*self.get_params())
-    stresses = model.solve_strain(times, strains, temperatures)[:,:,0]
+    if mode == "strain":
+      simul = model.solve_strain(times, input_data, temperatures)[:,:,0]
+    else:
+      simul = model.solve_stress(times, input_data, temperatures)[:,:,0]
+      
     with pyro.plate("trials", times.shape[1]):
       with pyro.plate("time", times.shape[0]):
-        return pyro.sample("obs", dist.Normal(stresses, self.eps), obs = true)
+        return pyro.sample("obs", dist.Normal(simul, self.eps), obs = true)
 
 class HierarchicalStatisticalModel(PyroModule):
   """
@@ -346,7 +411,7 @@ class HierarchicalStatisticalModel(PyroModule):
       Make the guide and cache the extra parameter names the adjoint solver
       is going to need
     """
-    def guide(times, strains, temperatures, true_stresses = None):
+    def guide(times, input_data, temperatures, true_data = None, mode="strain"):
       # Setup and sample the top-level loc and scale
       top_loc_samples = []
       top_scale_samples = []
@@ -390,7 +455,7 @@ class HierarchicalStatisticalModel(PyroModule):
 
     return [pyro.param(name).unconstrained() for name in self.extra_param_names]
 
-  def forward(self, times, strains, temperatures, true_stresses = None):
+  def forward(self, times, input_data, temperatures, true_data = None, mode="strain"):
     """
       Evaluate the forward model, conditioned by the true stresses if
       they are available
@@ -411,9 +476,212 @@ class HierarchicalStatisticalModel(PyroModule):
       bmodel = self.maker(*self.sample_bot(),
           extra_params = self.get_extra_params())
       # Generate the stresses
-      stresses = bmodel.solve_strain(times, strains, temperatures)[:,:,0]
+      if mode == "strain":
+        sim_res = bmodel.solve_strain(times, input_data, temperatures)[:,:,0]
+      else:
+        sim_res = bmodel.solve_stress(times, input_data, temperatures)[:,:,0]
       # Sample!
       with pyro.plate("time", times.shape[0]):
-        pyro.sample("obs", dist.Normal(stresses, eps), obs = true_stresses)
+        pyro.sample("obs", dist.Normal(sim_res, eps), obs = true_data)
 
-    return stresses
+    return sim_res
+
+
+class HierarchicalStatisticalExpModel(PyroModule):
+  """
+    Wrap a material model to provide a hierarchical :py:mod:`pyro` statistical
+    model
+
+    This type of statistical model does two levels of sampling for each
+    parameter in the base model.
+
+    First it samples a random variable to select the mean and scale of the
+    population of parameter values
+
+    Then, based on this "top level" location and scale it samples each parameter
+    independently -- i.e. each experiment is drawn from a different "heat",
+    with population statistics given by the top samples
+
+    At least for the moment the population means are selected from 
+    normal distributions, the population standard deviations from HalfNormal
+    distributions, and then each parameter population comes from a
+    Normal distribution
+
+    Args: 
+      maker:                    function that returns a valid material Module, 
+                                given the input parameters
+      names:                    names to use for each parameter
+      loc_loc_priors:           location of the prior for the mean of each
+                                parameter
+      loc_scale_priors:         scale of the prior of the mean of each
+                                parameter
+      scale_scale_priors:       scale of the prior of the standard
+                                deviation of each parameter
+      noise_priors:             prior on the white noise
+      loc_suffix (optional):    append to the variable name to give the top
+                                level sample for the location
+      scale_suffix (optional):  append to the variable name to give the top
+                                level sample for the scale
+      include_noise (optional): if true include white noise in the inference
+  """
+  def __init__(self, maker, names, loc_loc_priors, loc_scale_priors,
+      scale_scale_priors, noise_prior, indice, loc_suffix = "_loc",
+      scale_suffix = "_scale", param_suffix = "_param",
+      include_noise = False, scale = 1000.0):
+    super().__init__()
+    
+    # Store things we might later 
+    self.maker = maker
+    self.loc_suffix = loc_suffix
+    self.scale_suffix = scale_suffix
+    self.param_suffix = param_suffix
+    self.include_noise = include_noise
+
+    self.names = names
+    self.scale = scale
+    self.indice = indice
+
+    # We need these for the shapes...
+    self.loc_loc_priors = loc_loc_priors
+    self.loc_scale_priors = loc_scale_priors
+    self.scale_scale_priors = scale_scale_priors
+    self.noise_prior = noise_prior
+
+    # Setup both the top and bottom level variables
+    self.bot_vars = names
+    self.top_vars = []
+    self.dims = []
+    for var, loc_loc, loc_scale, scale_scale, in zip(
+        names, loc_loc_priors, loc_scale_priors, scale_scale_priors):
+      # These set standard PyroSamples with names of var + suffix
+      dim = loc_loc.dim()
+      self.dims.append(dim)
+      self.top_vars.append(var + loc_suffix)
+      setattr(self, self.top_vars[-1], PyroSample(dist.Normal(loc_loc,
+        loc_scale).to_event(dim)))
+      self.top_vars.append(var + scale_suffix)
+      setattr(self, self.top_vars[-1], PyroSample(dist.HalfNormal(scale_scale
+        ).to_event(dim)))
+      
+      # The tricks are: 1) use lambda self and 2) remember how python binds...
+      setattr(self, var, PyroSample(
+        lambda self, var = var, dim = loc_loc.dim(): dist.Normal(
+          getattr(self, var + loc_suffix),
+          getattr(self, var + scale_suffix)).to_event(dim)))
+
+    # Setup the noise
+    if self.include_noise:
+      self.eps = PyroSample(dist.HalfNormal(noise_prior))
+    else:
+      self.eps = torch.tensor(noise_prior)
+
+    # This annoyance is required to make the adjoint solver work
+    self.extra_param_names = []
+
+  @property
+  def nparams(self):
+    return len(self.names)
+
+  def sample_top(self):
+    """
+      Sample the top level variables
+    """
+    return [getattr(self, name) for name in self.top_vars]
+
+  def sample_bot(self):
+    """
+      Sample the bottom level variables
+    """
+    return [getattr(self, name) for name in self.bot_vars]
+
+  def make_guide(self):
+    """
+      Make the guide and cache the extra parameter names the adjoint solver
+      is going to need
+    """
+    def guide(strain_data, strain_cycles, strain_types,
+             stress_data, stress_cycles, stress_types, true_obs = None):
+      # Setup and sample the top-level loc and scale
+      top_loc_samples = []
+      top_scale_samples = []
+      for var, loc_loc, loc_scale, scale_scale, in zip(
+          self.names, self.loc_loc_priors, self.loc_scale_priors, 
+          self.scale_scale_priors):
+        dim = loc_loc.dim()
+        loc_param = pyro.param(var + self.loc_suffix + self.param_suffix, loc_loc)
+        scale_param = pyro.param(var + self.scale_suffix + self.param_suffix, scale_scale,
+            constraint = constraints.positive)
+        
+        top_loc_samples.append(pyro.sample(var + self.loc_suffix, dist.Delta(loc_param).to_event(dim)))
+        top_scale_samples.append(pyro.sample(var + self.scale_suffix, dist.Delta(scale_param).to_event(dim)))
+
+      # Add in the noise, if included in the inference
+      if self.include_noise:
+        eps_param = pyro.param("eps" + self.param_suffix, torch.tensor(self.noise_prior), constraint = constraints.positive)
+        eps_sample = pyro.sample("eps", dist.Delta(eps_param))
+
+      # Plate on experiments and sample individual values
+      with pyro.plate("trials", strain_data.shape[2]):
+        for i,(name, val, dim) in enumerate(zip(self.names, self.loc_loc_priors, self.dims)):
+          ll_param = pyro.param(name + self.param_suffix, torch.zeros_like(val).unsqueeze(0).repeat((strain_data.shape[2],) + (1,)*dim))
+          param_value = pyro.sample(name, dist.Delta(ll_param).to_event(dim))
+    
+    self.extra_param_names = [var + self.param_suffix for var in self.names]
+
+    return guide
+
+  def get_extra_params(self):
+    """
+      Actually list the extra parameters required for the adjoint solve.
+
+      We can't determine this by introspection on the base model, so
+      it needs to be done here
+    """
+    # Do some consistency checking
+    for p in self.extra_param_names:
+      if p not in pyro.get_param_store().keys():
+        raise ValueError("Internal error, parameter %s not in store!" % p)
+
+    return [pyro.param(name).unconstrained() for name in self.extra_param_names]
+
+  def forward(self, strain_data, strain_cycles, strain_types,
+          stress_data, stress_cycles, stress_types, true_obs = None):
+    """
+      Evaluate the forward model, conditioned by the true stresses if
+      they are available
+
+      Args:
+        times:                      time points to hit
+        strains:                    input strains
+        temperaturse:               input temperature data
+        true_stresses (optional):   actual stress values, if we're conditioning
+                                    for inference
+    """
+    # Sample the top level parameters
+    curr = self.sample_top()
+    eps = self.eps
+
+    with pyro.plate("trials", strain_data.shape[2]):
+      # Sample the bottom level parameters
+      bmodel = self.maker(*self.sample_bot(),
+          extra_params = self.get_extra_params())
+      # Generate the stresses
+      pred_strain = bmodel.solve_strain(strain_data[0], strain_data[1],
+          strain_data[2])[:,:,0]
+      pred_stress = bmodel.solve_stress(stress_data[0], stress_data[1],
+          stress_data[2])[:,:,0]
+
+      sim_results = experiments.assemble_results(
+          strain_data, strain_cycles, strain_types, pred_strain,
+          stress_data, stress_cycles, stress_types, pred_stress,
+          stress_scale = self.scale)
+      
+      
+      sim_results = sim_results.index_select(1, self.indice)
+      
+      # Sample!
+      with pyro.plate("time", strain_data.shape[1]):
+        pyro.sample("obs", dist.Normal(sim_results, eps), 
+           obs = true_obs.index_select(1, self.indice))
+
+    return true_obs.index_select(1, self.indice)
