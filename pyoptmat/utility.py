@@ -12,6 +12,7 @@ import torch.nn.functional as functional
 
 from pyro.nn import PyroSample
 
+
 def visualize_variance(strain, stress_true, stress_calc, alpha = 0.05):
   """
     Visualize variance for batched examples
@@ -43,7 +44,16 @@ def visualize_variance(strain, stress_true, stress_calc, alpha = 0.05):
       alpha = 0.5, label = "Predicted range")
   plt.xlabel("Strain (mm/mm)")
   plt.ylabel("Stress (MPa)")
-  plt.legend(loc='best')
+  plt.xticks(fontsize=16)
+  plt.yticks(fontsize=16)
+  plt.title("Scattering Predictive of Stress-strain", fontsize=16)
+  plt.tight_layout()
+  plt.grid(True)
+  plt.legend(prop={"size":18}, frameon=False, ncol=1, loc='best')
+  # plt.savefig("Scattering-strain-controlled-strain_cyclic.png")
+  plt.show()
+  plt.close()
+
 
   plt.show()
 
