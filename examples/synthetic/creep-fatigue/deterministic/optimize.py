@@ -73,6 +73,9 @@ if __name__ == "__main__":
     pred = model(times, strains, temperatures)
     lossv = loss(pred, true_stresses)
     lossv.backward()
+    with torch.no_grad():
+      for param in model.parameters():
+        param.clamp_(0, 1)
     return lossv
 
   t = tqdm(range(niter), total = niter, desc = "Loss:    ")
