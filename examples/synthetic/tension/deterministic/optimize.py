@@ -9,8 +9,9 @@ import numpy.random as ra
 
 import xarray as xr
 import torch
+import torch.nn as nn
 
-from maker import make_model, load_data, sf
+from maker import make_model, load_data, sf, unscale_model
 
 from pyoptmat import optimize
 from tqdm import tqdm
@@ -34,20 +35,20 @@ device = torch.device(dev)
 
 # Don't try to optimize for the Young's modulus
 def make(n, eta, s0, R, d, **kwargs):
-  return make_model(torch.tensor(0.5), n, eta, s0, R, d, use_adjoint = True,
+  return unscale_model(torch.tensor(150000.0), n, eta, s0, R, d, use_adjoint = True,
       device = device, **kwargs).to(device)
 
 if __name__ == "__main__":
   # 1) Load the data for the variance of interest,
   #    cut down to some number of samples, and flatten
-  scale = 0.01
-  nsamples = 10 # at each strain rate
+  scale = 0.00
+  nsamples = 1 # at each strain rate
   times, strains, temperatures, true_stresses = load_data(scale, nsamples, device = device)
-
+  
   # 2) Setup names for each parameter and the initial conditions
   names = ["n", "eta", "s0", "R", "d"]
-  ics = [ra.uniform(0,1) for i in range(len(names))]
-
+  # ics = [ra.uniform(0,1) for i in range(len(names))]
+  ics  = [10.0, 200.0, 30.0, 600.0, 50.0]
   print("Initial parameter values:")
   for n, ic in zip(names, ics):
     print("%s:\t%3.2f" % (n, ic))
@@ -62,12 +63,15 @@ if __name__ == "__main__":
 
   # 5) Setup the objective function
   loss = torch.nn.MSELoss(reduction = 'sum')
+  # loss = torch.nn.CrossEntropyLoss(reduction = 'sum')
+  # m = nn.LogSoftmax(dim=1)
+  # loss = nn.NLLLoss()
 
   # 6) Actually do the optimization!
   def closure():
     optim.zero_grad()
-    pred = model(times, strains, temperatures)
-    lossv = loss(pred, true_stresses)
+    pred = model(times, strains, temperatures)  
+    lossv = loss(pred.softmax(dim=0), true_stresses)
     lossv.backward()
     return lossv
 
@@ -82,8 +86,10 @@ if __name__ == "__main__":
   print("")
   print("Optimized parameter accuracy:")
   for n in names:
+    # print("%s:\t%3.2f/0.50" % (n, getattr(model, n).data))
     print("%s:\t%3.2f/0.50" % (n, getattr(model, n).data))
 
+  """
   # 8) Save the convergence history
   np.savetxt("loss-history.txt", loss_history)
 
@@ -93,3 +99,4 @@ if __name__ == "__main__":
   plt.ylabel("Loss")
   plt.tight_layout()
   plt.savefig("convergence.pdf")
+  """

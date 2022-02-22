@@ -38,6 +38,43 @@ s0_true = 50.0
 # Scale factor used in the model definition 
 sf = 0.5
 
+def trial_model(E, n, eta, s0, R, d, device = torch.device("cpu"), **kwargs):
+  """
+    Key function for the entire problem: given parameters generate the model
+  """
+  isotropic = hardening.VoceIsotropicHardeningModel(
+      CP(R, scaling = optimize.trial_scale_function((torch.tensor(R_true*(1-sf), device = device), torch.tensor(R_true*(1+sf), device = device)))),
+      CP(d, scaling = optimize.trial_scale_function((torch.tensor(d_true*(1-sf), device = device), torch.tensor(d_true*(1+sf), device = device))))) 
+  kinematic = hardening.NoKinematicHardeningModel()
+  flowrule = flowrules.IsoKinViscoplasticity(
+      CP(n, scaling = optimize.trial_scale_function((torch.tensor(n_true*(1-sf), device = device), torch.tensor(n_true*(1+sf), device = device)))),
+      CP(eta, scaling = optimize.trial_scale_function((torch.tensor(eta_true*(1-sf), device = device), torch.tensor(eta_true*(1+sf), device = device)))),
+      CP(s0, scaling = optimize.trial_scale_function((torch.tensor(s0_true*(1-sf), device = device), torch.tensor(s0_true*(1+sf), device = device)))),
+      isotropic, kinematic)
+  model = models.InelasticModel(CP(E, scaling = optimize.trial_scale_function((torch.tensor(E_true*(1-sf), device = device), torch.tensor(E_true*(1+sf), device = device)))),
+      flowrule)
+
+  return models.ModelIntegrator(model, **kwargs)
+
+
+def unscale_model(E, n, eta, s0, R, d, device = torch.device("cpu"), **kwargs):
+  """
+    Key function for the entire problem: given parameters generate the model
+  """
+  isotropic = hardening.VoceIsotropicHardeningModel(
+      CP(R),
+      CP(d))
+  kinematic = hardening.NoKinematicHardeningModel()
+  flowrule = flowrules.IsoKinViscoplasticity(
+      CP(n),
+      CP(eta),
+      CP(s0),
+      isotropic, kinematic)
+  model = models.InelasticModel(CP(E), flowrule)
+
+  return models.ModelIntegrator(model, **kwargs)
+
+
 def make_model(E, n, eta, s0, R, d, device = torch.device("cpu"), **kwargs):
   """
     Key function for the entire problem: given parameters generate the model

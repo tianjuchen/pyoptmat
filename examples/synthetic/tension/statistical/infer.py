@@ -73,11 +73,12 @@ if __name__ == "__main__":
 
   # 4) Get the guide
   guide = model.make_guide()
+  pyro.clear_param_store() 
   
   # 5) Setup the optimizer and loss
   lr = 1.0e-2
   g = 1.0
-  niter = 200
+  niter = 2
   lrd = g**(1.0 / niter)
   num_samples = 1
   
@@ -85,7 +86,7 @@ if __name__ == "__main__":
   if jit_mode:
     ls = pyro.infer.JitTrace_ELBO(num_particles = num_samples)
   else:
-    ls = pyro.infer.Trace_ELBO(num_particles = num_samples)
+    ls = pyro.infer.Trace_ELBO(num_particles = num_samples, vectorize_particles=False)
 
   svi = SVI(model, guide, optimizer, loss = ls)
 
@@ -97,8 +98,9 @@ if __name__ == "__main__":
     loss_hist.append(loss)
     t.set_description("Loss %3.2e" % loss)
   
-  s, m = torch.std_mean(pyro.param("d_param").data)
+  # s, m = torch.std_mean(pyro.param("d_param").data)
 
+  # print("d_param:", pyro.param("d_param").data)
   # 7) Print out results
   print("")
   print("Inferred distributions:")
