@@ -20,7 +20,7 @@ import pyro
 from pyro.nn import PyroModule, PyroSample
 import pyro.distributions as dist
 import pyro.distributions.constraints as constraints
-from pyro.contrib.autoguide import AutoDelta, init_to_mean
+from pyro.contrib.autoguide import AutoDelta, init_to_mean, AutoMultivariateNormal
 
 from tqdm import tqdm
 
@@ -406,6 +406,15 @@ class HierarchicalStatisticalModel(PyroModule):
     """
     return [getattr(self, name) for name in self.bot_vars]
 
+  def make_auto_guide(self):
+    """
+      Make the guide and cache the extra parameter names the adjoint solver
+      is going to need
+    """
+    guide = AutoMultivariateNormal(self, init_loc_fn=init_to_mean)
+    self.extra_param_names = ["AutoMultivariateNormal." + name for name in self.bot_vars]
+    return guide
+
   def make_guide(self):
     """
       Make the guide and cache the extra parameter names the adjoint solver
@@ -441,6 +450,17 @@ class HierarchicalStatisticalModel(PyroModule):
 
     return guide
 
+  def auto_guide_get_extra_params(self):
+    """
+      Actually find the extra parameters required for the adjoint solve
+    """
+    if len(self.extra_param_names) == 0:
+      return []
+    elif self.extra_param_names[0] not in pyro.get_param_store().keys():
+      return []
+    else:
+      return [pyro.param(name) for name in self.extra_param_names]
+
   def get_extra_params(self):
     """
       Actually list the extra parameters required for the adjoint solve.
@@ -473,7 +493,8 @@ class HierarchicalStatisticalModel(PyroModule):
 
     with pyro.plate("trials", times.shape[1]):
       # Sample the bottom level parameters
-      bmodel = self.maker(*self.sample_bot(),
+      bmodel = self.maker(*self.sample_bot(), 
+          # extra_params = self.auto_guide_get_extra_params())
           extra_params = self.get_extra_params())
       # Generate the stresses
       if mode == "strain":
