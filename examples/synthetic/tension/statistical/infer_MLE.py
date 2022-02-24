@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
   # 2) Setup names for each parameter and the priors
   names = ["n", "eta", "s0", "R", "d"]
-  loc_loc_priors = [torch.tensor(ra.random(), device = device) for i in range(len(names))]
+  loc_loc_priors = [torch.tensor(0.0, device = device) for i in range(len(names))]
   loc_scale_priors = [torch.tensor(0.15, device = device) for i in range(len(names))]
   scale_scale_priors = [torch.tensor(0.15, device = device) for i in range(len(names))]
 
