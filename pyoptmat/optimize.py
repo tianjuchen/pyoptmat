@@ -17,7 +17,7 @@ from skopt.space import Space
 from skopt.sampler import Lhs
 
 import pyro
-from pyro.nn import PyroModule, PyroSample
+from pyro.nn import PyroModule, PyroSample, PyroParam
 import pyro.distributions as dist
 import pyro.distributions.constraints as constraints
 from pyro.contrib.autoguide import AutoDelta, init_to_mean, AutoMultivariateNormal
@@ -850,6 +850,159 @@ class BayesianRange(PyroModule):
     
     self.extra_param_names = [var + self.param_suffix for var in self.names]
 
+    return guide
+
+  def get_extra_params(self):
+    """
+      Actually list the extra parameters required for the adjoint solve.
+
+      We can't determine this by introspection on the base model, so
+      it needs to be done here
+    """
+    # Do some consistency checking
+    for p in self.extra_param_names:
+      if p not in pyro.get_param_store().keys():
+        raise ValueError("Internal error, parameter %s not in store!" % p)
+
+    return [pyro.param(name).unconstrained() for name in self.extra_param_names]
+
+  def forward(self, times, input_data, temperatures, true_data = None, mode="strain"):
+    """
+      Evaluate the forward model, conditioned by the true stresses if
+      they are available
+
+      Args:
+        times:                      time points to hit
+        strains:                    input strains
+        temperaturse:               input temperature data
+        true_stresses (optional):   actual stress values, if we're conditioning
+                                    for inference
+    """
+    # Sample the top level parameters
+    curr = self.sample_top()
+    eps = self.eps
+
+    with pyro.plate("trials", times.shape[1]):
+      # Sample the bottom level parameters
+      bmodel = self.maker(*self.sample_bot(),
+          extra_params = self.get_extra_params())
+      # Generate the stresses
+      if mode == "strain":
+        sim_res = bmodel.solve_strain(times, input_data, temperatures)[:,:,0]
+      else:
+        sim_res = bmodel.solve_stress(times, input_data, temperatures)[:,:,0]
+      # Sample!
+      with pyro.plate("time", times.shape[0]):
+        pyro.sample("obs", dist.Normal(sim_res, eps), obs = true_data)
+
+    return sim_res
+
+class MLEOptim(PyroModule):
+  """
+    Wrap a material model to provide a hierarchical :py:mod:`pyro` statistical
+    model
+
+    This type of statistical model does two levels of sampling for each
+    parameter in the base model.
+
+    First it samples a random variable to select the mean and scale of the
+    population of parameter values
+
+    Then, based on this "top level" location and scale it samples each parameter
+    independently -- i.e. each experiment is drawn from a different "heat",
+    with population statistics given by the top samples
+
+    At least for the moment the population means are selected from 
+    normal distributions, the population standard deviations from HalfNormal
+    distributions, and then each parameter population comes from a
+    Normal distribution
+
+    Args: 
+      maker:                    function that returns a valid material Module, 
+                                given the input parameters
+      names:                    names to use for each parameter
+      loc_loc_priors:           location of the prior for the mean of each
+                                parameter
+      loc_scale_priors:         scale of the prior of the mean of each
+                                parameter
+      scale_scale_priors:       scale of the prior of the standard
+                                deviation of each parameter
+      noise_priors:             prior on the white noise
+      loc_suffix (optional):    append to the variable name to give the top
+                                level sample for the location
+      scale_suffix (optional):  append to the variable name to give the top
+                                level sample for the scale
+      include_noise (optional): if true include white noise in the inference
+  """
+  def __init__(self, maker, names, loc_loc_priors, loc_scale_priors,
+      scale_scale_priors, noise_prior, range_min, range_max,
+      loc_suffix = "_loc",
+      scale_suffix = "_scale", param_suffix = "_param",
+      include_noise = False):
+    super().__init__()
+    
+    # Store things we might later 
+    self.maker = maker
+    self.loc_suffix = loc_suffix
+    self.scale_suffix = scale_suffix
+    self.param_suffix = param_suffix
+    self.include_noise = include_noise
+    self.range_min = range_min
+    self.range_max = range_max
+
+    self.names = names
+
+    # We need these for the shapes...
+    self.loc_loc_priors = loc_loc_priors
+    self.loc_scale_priors = loc_scale_priors
+    self.scale_scale_priors = scale_scale_priors
+    self.noise_prior = noise_prior
+
+    # Setup both the top and bottom level variables
+    self.bot_vars = names
+    self.top_vars = []
+    for var, loc_loc, scale_scale, r_min, r_max in zip(
+        names, loc_loc_priors, scale_scale_priors, range_min, range_max):
+      # These set standard PyroSamples with names of var + suffix
+      self.top_vars.append(var + loc_suffix)
+      setattr(self, self.top_vars[-1], PyroParam(loc_loc, 
+             constraint = constraints.interval(r_min, r_max)))
+      self.top_vars.append(var + scale_suffix)
+      setattr(self, self.top_vars[-1], PyroParam(scale_scale,
+             constraint=constraints.positive))
+      # The bottom variables
+      setattr(self, var, PyroParam(loc_loc, 
+            constraint=constraints.interval(r_min, r_max)))
+    
+    self.eps = torch.tensor(noise_prior)
+    # This annoyance is required to make the adjoint solver work
+    self.extra_param_names = [var for var in self.names]
+    self.extra_param_names += [var + loc_suffix for var in self.names]
+
+  @property
+  def nparams(self):
+    return len(self.names)
+
+  def sample_top(self):
+    """
+      Sample the top level variables
+    """
+    return [getattr(self, name) for name in self.top_vars]
+
+  def sample_bot(self):
+    """
+      Sample the bottom level variables
+    """
+    return [getattr(self, name) for name in self.bot_vars]
+
+  def make_guide(self):
+    """
+      Make the guide and cache the extra parameter names the adjoint solver
+      is going to need
+    """
+    def guide(times, input_data, temperatures, true_data = None, mode="strain"):
+      pass  
+    # self.extra_param_names = [var for var in self.names]
     return guide
 
   def get_extra_params(self):

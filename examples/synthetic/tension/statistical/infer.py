@@ -74,11 +74,8 @@ if __name__ == "__main__":
 
   # 4) Get the guide
   guide = model.make_guide()
-<<<<<<< HEAD
   pyro.clear_param_store() 
-=======
   # guide = model.make_auto_guide()
->>>>>>> e490022e7cf6ecbdb13c92232b8bafeaf445fce7
   
   # **) check up auto guide
   # print("Pyro Inferred Parameters are:")
@@ -88,11 +85,7 @@ if __name__ == "__main__":
   # 5) Setup the optimizer and loss
   lr = 1.0e-2
   g = 1.0
-<<<<<<< HEAD
-  niter = 2
-=======
   niter = 50
->>>>>>> e490022e7cf6ecbdb13c92232b8bafeaf445fce7
   lrd = g**(1.0 / niter)
   num_samples = 1
   
@@ -111,7 +104,7 @@ if __name__ == "__main__":
     loss = svi.step(times, strains, temperatures, true_stresses)
     loss_hist.append(loss)
     t.set_description("Loss %3.2e" % loss)
-<<<<<<< HEAD
+
   
   # s, m = torch.std_mean(pyro.param("d_param").data)
 
@@ -127,30 +120,11 @@ if __name__ == "__main__":
       m,
       s,
       scale))
-=======
-
   print("Pyro Inferred Parameters are:")
   for name, value in pyro.get_param_store().items():
     print(name, pyro.param(name))
->>>>>>> e490022e7cf6ecbdb13c92232b8bafeaf445fce7
   print("")
-  
-  # s, m = torch.std_mean(pyro.param("d_param").data)
 
-  # 7) Print out results
-  # print("")
-  # print("Inferred distributions:")
-  # print("\tloc\t\tscale")
-  # for n in names:
-    # s = pyro.param(n + model.scale_suffix + model.param_suffix).data
-    # m = pyro.param(n + model.loc_suffix + model.param_suffix).data
-    # print("%s:\t%3.2f/0.50\t%3.2f/%3.2f" % (n,
-      # m,
-      # s,
-      # scale))
-  # print("")
-
-  """
   # 8) Save some info
   np.savetxt("loss-history.txt", loss_hist)
 
@@ -160,7 +134,7 @@ if __name__ == "__main__":
   plt.ylabel("Loss")
   plt.tight_layout()
   plt.savefig("convergence.pdf")
-  """
+  
   # 9) plot the results
   sites = ["n", "eta", "s0", "R", "d"]
   num_samples = 100
