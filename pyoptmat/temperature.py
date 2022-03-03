@@ -610,3 +610,52 @@ class ArrheniusScaling(TemperatureParameter):
         Shape of the underlying parameter
         """
         return self.A.shape
+
+class TTBWidthScaling(TemperatureParameter):
+
+  def __init__(self, A, B, *args, A_scale = lambda x: x, B_scale = lambda x: x, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.A = A
+    self.B = B
+    self.A_scale = A_scale
+    self.B_scale = B_scale
+
+  def value(self, T):
+    """
+      Actual temperature-dependent value
+      Args:
+        T:      current temperatures
+    """
+    L_b = self.A_scale(self.A)*(1-self.B_scale(self.B)*T[...,None])
+    return L_b
+
+  @property
+  def shape(self):
+    return (self.A.shape)
+
+class TTBScaling(TemperatureParameter):
+
+  def __init__(self, mu, b, A, B, *args, A_scale = lambda x: x,
+      B_scale = lambda x: x, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.mu = mu
+    self.b = b
+    self.A = A
+    self.B = B
+    self.A_scale = A_scale
+    self.B_scale = B_scale
+    self.L_b = TTBWidthScaling(self.A, self.B, A_scale=self.A_scale, B_scale=self.B_scale)
+
+  def value(self, T):
+    """
+    Actual temperature-dependent value
+    Args:
+    T:      current temperatures
+    """    
+    L_b = self.L_b(T)
+    C = self.mu(T)[...,None]*self.b/L_b
+    return C
+
+  @property
+  def shape(self):
+    return (self.A.shape)
