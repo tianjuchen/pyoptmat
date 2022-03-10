@@ -459,6 +459,7 @@ class HierarchicalStatisticalModel(PyroModule):
                         .unsqueeze(0)
                         .repeat((exp_data.shape[2],) + (1,) * dim)
                         + 0.5,
+                        constraint=constraints.interval(0.0, 1.0)
                     )
                     param_value = pyro.sample(name, dist.Delta(ll_param).to_event(dim))
 
