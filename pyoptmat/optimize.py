@@ -43,6 +43,10 @@ import pyro.distributions as dist
 from pyro.distributions import constraints
 
 from pyoptmat import experiments
+from pyro.contrib.autoguide import AutoDelta, init_to_mean, AutoMultivariateNormal
+from pyro.infer.autoguide import AutoDiagonalNormal, AutoNormalizingFlow
+from pyro.distributions.transforms import block_autoregressive, iterated
+from functools import partial
 
 
 def bound_factor(mean, factor, min_bound=None):
@@ -418,7 +422,8 @@ class HierarchicalStatisticalModel(PyroModule):
             ):
                 dim = loc_loc.dim()
                 loc_param = pyro.param(
-                    var + self.loc_suffix + self.param_suffix, loc_loc
+                    var + self.loc_suffix + self.param_suffix, loc_loc,
+                    constraint=constraints.interval(0.0, 1.0)
                 )
                 scale_param = pyro.param(
                     var + self.scale_suffix + self.param_suffix,
@@ -466,7 +471,7 @@ class HierarchicalStatisticalModel(PyroModule):
         self.extra_param_names = [var + self.param_suffix for var in self.names]
 
         return guide
-
+    
     def get_extra_params(self):
         """
         Actually list the extra parameters required for the adjoint solve.
