@@ -158,9 +158,9 @@ class TestChabocheKinematicHardeningRecovery(unittest.TestCase, HardeningBase):
 class TestYaguchiHardeningModel(unittest.TestCase, HardeningBase):
     def setUp(self):
         self.br = torch.tensor(1000.0)
-        self.bh = torch.tensor(1065.0)
+        self.bh = torch.tensor(209.0)
         self.A = torch.tensor(-60.0)
-        self.B = torch.tensor(-17.30)
+        self.B = torch.tensor(-17.0)
         self.model = hardening.YaguchiHardeningModel(
             CP(self.br), CP(self.bh), CP(self.A), CP(self.B))
 

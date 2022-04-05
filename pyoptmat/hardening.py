@@ -15,6 +15,7 @@
 
 import torch
 from torch import nn
+from pyoptmat import utility
 
 
 class HardeningModel(nn.Module):
@@ -427,16 +428,17 @@ class Theta0RecoveryVoceIsotropicHardeningModel(IsotropicHardeningModel):
             1,
         )
 
+
 class YaguchiHardeningModel(IsotropicHardeningModel):
     """
     Voce isotropic hardening, defined by
     .. math::
       \\sigma_{iso} = h
       \\dot{h} = b (\\sigma_{sat} - h) \\left|\\dot{\\varepsilon}_{in}\\right|
-      
+
       \\sigma_{sat} = A + B * log_{10}(|ep|)
-      
-      \\b = b_{h} if \\sigma_{sat} >= sigma_{iso} else b = b_{r} 
+
+      \\b = b_{h} if \\sigma_{sat} >= sigma_{iso} else b = b_{r}
     Args:
       b_{r} (|TP|): parameter controlling the rate of saturation
       b_{h} (|TP|): parameter controlling the rate of saturation
@@ -492,8 +494,9 @@ class YaguchiHardeningModel(IsotropicHardeningModel):
         Returns:
           torch.tensor:       internal variable rate
         """
-        return torch.unsqueeze(self.b(h, ep, T) * (self.sigma_sat(ep, T) 
-            - h[:, 0]) * torch.abs(ep), 1)
+        return torch.unsqueeze(
+            self.b(h, ep, T) * (self.sigma_sat(ep, T) - h[:, 0]) * torch.abs(ep), 1
+        )
 
     def dhistory_rate_dstress(self, s, h, t, ep, T):
         """
@@ -521,7 +524,7 @@ class YaguchiHardeningModel(IsotropicHardeningModel):
         Returns:
           torch.tensor:       derivative with respect to history
         """
-        return (-self.b(h, ep, T) * torch.abs(ep))[:,None,None]
+        return (-self.b(h, ep, T) * torch.abs(ep))[:, None, None]
 
     def dhistory_rate_derate(self, s, h, t, ep, T):
         """
@@ -536,38 +539,58 @@ class YaguchiHardeningModel(IsotropicHardeningModel):
         Returns:
           torch.tensor:       derivative with respect to the inelastic rate
         """
+        # l10 = torch.log(torch.tensor(10.0))
+        # return (self.b(h, ep, T) / l10 * (self.B(T) +
+        # (self.A(T) - h[:,0])*l10 +
+        # self.B(T)*torch.log(torch.abs(ep))) * torch.sign(ep))[:,None,None]
         l10 = torch.log(torch.tensor(10.0))
-        return (self.b(h, ep, T) / l10 * (self.B(T) + 
-                (self.A(T) - h[:,0])*l10 + 
-                self.B(T)*torch.log(torch.abs(ep))) * torch.sign(ep))[:,None,None]
-    
+        sigma_sign = (
+            torch.eq(
+                self.sigma_sat(ep, T), torch.zeros_like(self.sigma_sat(ep, T))
+            ).int()
+        )[:, None, None]
+        solution_1 = (
+            self.b(h, ep, T)
+            / l10
+            * (
+                self.B(T)
+                + (self.A(T) - h[:, 0]) * l10
+                + self.B(T) * torch.log(torch.abs(ep))
+            )
+            * torch.sign(ep)
+        )[:, None, None]
+        solution_2 = ((-self.b(h, ep, T) * h[:, 0]) * torch.sign(ep))[:, None, None]
+
+        return sigma_sign * solution_2 + (1.0 - sigma_sign) * solution_1
+
     def sigma_sat(self, ep, T):
         """
-            Calculate the current value of sigma_sat
-            Args:
-                ep (torch.tensor):  inelastic strain rate
-                T (torch.tensor):   the temperature
-            Returns:
-                torch.tensor:       current saturation strength
+        Calculate the current value of sigma_sat
+        Args:
+            ep (torch.tensor):  inelastic strain rate
+            T (torch.tensor):   the temperature
+        Returns:
+            torch.tensor:       current saturation strength
         """
-        return self.A(T) + self.B(T) * torch.log10(torch.abs(ep))
+        return utility.macaulay(self.A(T) + self.B(T) * torch.log10(torch.abs(ep)))
 
     def b(self, h, ep, T):
         """
-            Calculate the current value of b
-            Args:
-                h (torch.tensor):   current isotropic hardening value
-                ep (torch.tensor):  current viscoplastic strain rate
-                T (torch.tensor):   the temperature
-            Returns:
-                torch.tensor:       current values of b
+        Calculate the current value of b
+        Args:
+            h (torch.tensor):   current isotropic hardening value
+            ep (torch.tensor):  current viscoplastic strain rate
+            T (torch.tensor):   the temperature
+        Returns:
+            torch.tensor:       current values of b
         """
         sigma_sat = self.sigma_sat(ep, T)
+        # b = torch.zeros_like(ep)
+        # b[sigma_sat >= h[:,0]] = self.bh(T)
+        # b[sigma_sat < h[:,0]] = self.br(T)
+        heaviside = torch.ge(sigma_sat, h[:, 0]).int()
+        return heaviside * self.bh(T) + (1.0 - heaviside) * self.br(T)
 
-        b = torch.zeros_like(ep)
-        b[sigma_sat >= h[:,0]] = self.bh(T)
-        b[sigma_sat < h[:,0]] = self.br(T)
-        return b
 
 class KinematicHardeningModel(HardeningModel):
     """
