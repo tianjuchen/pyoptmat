@@ -422,8 +422,9 @@ class HierarchicalStatisticalModel(PyroModule):
             ):
                 dim = loc_loc.dim()
                 loc_param = pyro.param(
-                    var + self.loc_suffix + self.param_suffix, loc_loc,
-                    constraint=constraints.interval(0.0, 1.0)
+                    var + self.loc_suffix + self.param_suffix,
+                    loc_loc,
+                    constraint=constraints.interval(0.0, 1.0),
                 )
                 scale_param = pyro.param(
                     var + self.scale_suffix + self.param_suffix,
@@ -464,14 +465,14 @@ class HierarchicalStatisticalModel(PyroModule):
                         .unsqueeze(0)
                         .repeat((exp_data.shape[2],) + (1,) * dim)
                         + 0.5,
-                        constraint=constraints.interval(0.0, 1.0)
+                        constraint=constraints.interval(0.0, 1.0),
                     )
                     param_value = pyro.sample(name, dist.Delta(ll_param).to_event(dim))
 
         self.extra_param_names = [var + self.param_suffix for var in self.names]
 
         return guide
-    
+
     def get_extra_params(self):
         """
         Actually list the extra parameters required for the adjoint solve.
