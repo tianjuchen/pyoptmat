@@ -1,3 +1,4 @@
+# pylint: disable=missing-function-docstring
 """
   The idea of the objects here, derived from |TP|
   is to provide temperature-dependent versions of raw model parameters.

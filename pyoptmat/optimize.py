@@ -1,3 +1,4 @@
+# pylint: disable=unused-import
 """
   Objects and helper functions to help with deterministic model calibration
   and statistical inference.
