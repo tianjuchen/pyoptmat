@@ -404,3 +404,260 @@ class IsoKinViscoplasticity(FlowRule):
         )
 
         return res
+
+
+class IsoKinhyper(FlowRule):
+    """
+    Viscoplasticity with isotropic and kinematic hardening, defined as
+
+    .. math::
+
+      \\dot{\\varepsilon}_{in}=\\left\\langle \\frac{\\left|\\sigma-x\\right|-s_{0}-k}{\\eta}\\right\\rangle ^{n}\\operatorname{sign}\\left(\\sigma-X\\right)
+
+    and where the :py:class:`pyoptmat.hardening.IsotropicHardeningModel` and
+    :py:class:`pyoptmat.hardening.KinematicHardeningModel` objects determine the
+    history rate.
+
+    The :py:class:`pyoptmat.hardening.IsotropicHardeningModel` and
+    :py:class:`pyoptmat.hardening.KinematicHardeningModel` objects each define both a
+    set of internal variables, including the corresponding rate forms and Jacobians,
+    but also a map from those internal variables to the isotropic hardening
+    value :math:`k` (for :py:class:`pyoptmat.hardening.IsotropicHardeningModel`)
+    and the kinematic hardening value :math:`x`
+    (for :py:class:`pyoptmat.hardening.KinematicHardeningModel`), along with
+    the derivatives of those maps.  All this information is required to assemble
+    the information this class needs to provide.
+
+    Args:
+      n (|TP|):         rate sensitivity
+      eta (|TP|):       flow viscosity
+      s0 (|TP|):        initial value of flow stress (i.e. the threshold stress)
+      isotropic (:py:class:`pyoptmat.hardening.IsotropicHardeningModel`): object providing the isotropic hardening model
+      kinematic (:py:class:`pyoptmat.hardening.IsotropicHardeningModel`): object providing the kinematic hardening model
+    """
+
+    def __init__(self, alpha, beta, s0, isotropic, kinematic):
+        super().__init__()
+        self.isotropic = isotropic
+        self.kinematic = kinematic
+        self.alpha = alpha
+        self.beta = beta
+        self.s0 = s0
+
+    def flow_rate(self, s, h, t, T):
+        """
+        The flow rate itself and the derivative with respect to stress
+
+        Args:
+          s (torch.tensor):   stress
+          h (torch.tensor):   history
+          t (torch.tensor):   time
+          T (torch.tensor):   temperature
+
+        Returns:
+          tuple(torch.tensor, torch.tensor):  the flow rate and the derivative of the flow rate with
+                                              respect to stress
+        """
+        ih = self.isotropic.value(h[:, : self.isotropic.nhist])
+        kh = self.kinematic.value(h[:, self.isotropic.nhist :])
+
+        return (
+            self.alpha(T)
+            * torch.sinh(self.beta(T) * (torch.abs(s - kh) - self.s0(T) - ih)),
+            self.alpha(T)
+            * torch.cosh(self.beta(T) * (torch.abs(s - kh) - self.s0(T) - ih))
+            * self.beta(T)
+            * torch.sign(s - kh),
+        )
+
+    def dflow_diso(self, s, h, t, T):
+        """
+        The derivative of the flow rate with respect to the isotropic hardening
+
+        Args:
+          s (torch.tensor):   stress
+          h (torch.tensor):   history
+          t (torch.tensor):   time
+          T (torch.tensor):   temperature
+
+        Returns:
+          torch.tensor:       the derivative of the flow rate
+        """
+        ih = self.isotropic.value(h[:, : self.isotropic.nhist])
+        kh = self.kinematic.value(
+            h[:, self.isotropic.nhist : self.isotropic.nhist + self.kinematic.nhist]
+        )
+
+        iv = torch.abs(s - kh) - self.s0(T) - ih
+
+        return self.alpha(T) * torch.cosh(self.beta(T) * iv) * -self.beta(T)
+
+    def dflow_dkin(self, s, h, t, T):
+        """
+        The derivative of the flow rate with respect to the kinematic hardening
+
+        Args:
+          s (torch.tensor):   stress
+          h (torch.tensor):   history
+          t (torch.tensor):   time
+          T (torch.tensor):   temperature
+
+        Returns:
+          torch.tensor:       the derivative of the flow rate
+        """
+        ih = self.isotropic.value(h[:, : self.isotropic.nhist])
+        kh = self.kinematic.value(
+            h[:, self.isotropic.nhist : self.isotropic.nhist + self.kinematic.nhist]
+        )
+
+        iv = torch.abs(s - kh) - self.s0(T) - ih
+
+        return (
+            self.alpha(T)
+            * torch.cosh(self.beta(T) * iv)
+            * -self.beta(T)
+            * torch.sign(s - kh)
+        )
+
+    @property
+    def nhist(self):
+        """
+        The number of internal variables, here the sum from the isotropic
+        and kinematic hardening models
+        """
+        return self.isotropic.nhist + self.kinematic.nhist
+
+    def history_rate(self, s, h, t, T):
+        """
+        The vector of the rates of the internal variables split into
+        portions defined by each hardening model
+
+        The first chunk of entries is for the isotropic hardening,
+        the second for the kinematic hardening.
+
+        Args:
+          s (torch.tensor):   stress
+          h (torch.tensor):   history
+          t (torch.tensor):   time
+          T (torch.tensor):   temperature
+
+        Returns:
+          tuple(torch.tensor, torch.tensor):    the history rate and the
+                                                derivative of the history rate
+                                                with respect to history
+        """
+        hrate = torch.zeros_like(h)
+        hdiv = torch.zeros(h.shape + h.shape[-1:], device=h.device)
+        erate, _ = self.flow_rate(s, h, t, T)
+
+        hiso = h[:, : self.isotropic.nhist]
+        hkin = h[:, self.isotropic.nhist :]
+
+        hrate[:, : self.isotropic.nhist] = self.isotropic.history_rate(
+            s, hiso, t, erate, T
+        )
+        hrate[:, self.isotropic.nhist :] = self.kinematic.history_rate(
+            s, hkin, t, erate, T
+        )
+
+        # History partials
+        hdiv[
+            :, : self.isotropic.nhist, : self.isotropic.nhist
+        ] = self.isotropic.dhistory_rate_dhistory(s, hiso, t, erate, T)
+        hdiv[
+            :, self.isotropic.nhist :, self.isotropic.nhist :
+        ] = self.kinematic.dhistory_rate_dhistory(s, hkin, t, erate, T)
+
+        # Strain rate components
+        hdiv[:, : self.isotropic.nhist, : self.isotropic.nhist] += torch.matmul(
+            self.isotropic.dhistory_rate_derate(s, hiso, t, erate, T),
+            torch.matmul(
+                self.dflow_diso(s, h, t, T)[:, None, None],
+                self.isotropic.dvalue(hiso)[:, None, :],
+            ),
+        )
+        hdiv[:, : self.isotropic.nhist, self.isotropic.nhist :] += torch.matmul(
+            self.isotropic.dhistory_rate_derate(s, hiso, t, erate, T),
+            torch.matmul(
+                self.dflow_dkin(s, h, t, T)[:, None, None],
+                self.kinematic.dvalue(hkin)[:, None, :],
+            ),
+        )
+        hdiv[:, self.isotropic.nhist :, : self.isotropic.nhist] += torch.matmul(
+            self.kinematic.dhistory_rate_derate(s, hkin, t, erate, T),
+            torch.matmul(
+                self.dflow_diso(s, h, t, T)[:, None, None],
+                self.isotropic.dvalue(hiso)[:, None, :],
+            ),
+        )
+        hdiv[:, self.isotropic.nhist :, self.isotropic.nhist :] += torch.matmul(
+            self.kinematic.dhistory_rate_derate(s, hkin, t, erate, T),
+            torch.matmul(
+                self.dflow_dkin(s, h, t, T)[:, None, None],
+                self.kinematic.dvalue(hkin)[:, None, :],
+            ),
+        )
+
+        return hrate, hdiv
+
+    def dflow_dhist(self, s, h, t, T):
+        """
+        The derivative of the flow rate with respect to the internal variables
+
+        Args:
+          s (torch.tensor):   stress
+          h (torch.tensor):   history
+          t (torch.tensor):   time
+          T (torch.tensor):   temperature
+
+        Returns:
+          torch.tensor:       the derivative of the flow rate
+        """
+        res = torch.zeros(s.shape[:1] + (1,) + h.shape[1:], device=h.device)
+
+        hiso = h[:, : self.isotropic.nhist]
+        hkin = h[:, self.isotropic.nhist :]
+
+        res[:, 0, : self.isotropic.nhist] = self.dflow_diso(s, h, t, T)[
+            :, None
+        ] * self.isotropic.dvalue(hiso)
+        res[:, 0, self.isotropic.nhist :] = self.dflow_dkin(s, h, t, T)[
+            :, None
+        ] * self.kinematic.dvalue(hkin)
+
+        return res
+
+    def dhist_dstress(self, s, h, t, T):
+        """
+        The derivative of the history rate with respect to the stress
+
+        Args:
+          s (torch.tensor):   stress
+          h (torch.tensor):   history
+          t (torch.tensor):   time
+          T (torch.tensor):   temperature
+
+        Returns:
+          torch.tensor:       the derivative of the flow rate
+        """
+        res = torch.zeros(h.shape + s.shape[1:], device=h.device)
+
+        erate, derate = self.flow_rate(s, h, t, T)
+
+        hiso = h[:, : self.isotropic.nhist]
+        hkin = h[:, self.isotropic.nhist :]
+
+        res[:, : self.isotropic.nhist] = (
+            self.isotropic.dhistory_rate_dstress(s, hiso, t, erate, T)
+            + self.isotropic.dhistory_rate_derate(s, hiso, t, erate, T).bmm(
+                derate[..., None, None]
+            )[..., 0]
+        )
+        res[:, self.isotropic.nhist :] = (
+            self.kinematic.dhistory_rate_dstress(s, hkin, t, erate, T)
+            + self.kinematic.dhistory_rate_derate(s, hkin, t, erate, T).bmm(
+                derate[..., None, None]
+            )[..., 0]
+        )
+
+        return res
