@@ -543,6 +543,7 @@ class YaguchiHardeningModel(IsotropicHardeningModel):
         # return (self.b(h, ep, T) / l10 * (self.B(T) +
         # (self.A(T) - h[:,0])*l10 +
         # self.B(T)*torch.log(torch.abs(ep))) * torch.sign(ep))[:,None,None]
+        tiny = torch.tensor(1.0e-20)
         l10 = torch.log(torch.tensor(10.0))
         sigma_sign = (
             torch.eq(
@@ -555,7 +556,7 @@ class YaguchiHardeningModel(IsotropicHardeningModel):
             * (
                 self.B(T)
                 + (self.A(T) - h[:, 0]) * l10
-                + self.B(T) * torch.log(torch.abs(ep))
+                + self.B(T) * torch.log(torch.abs(ep + tiny))
             )
             * torch.sign(ep)
         )[:, None, None]
@@ -572,7 +573,10 @@ class YaguchiHardeningModel(IsotropicHardeningModel):
         Returns:
             torch.tensor:       current saturation strength
         """
-        return utility.macaulay(self.A(T) + self.B(T) * torch.log10(torch.abs(ep)))
+        tiny = torch.tensor(1.0e-20)
+        return utility.macaulay(
+            self.A(T) + self.B(T) * torch.log10(torch.abs(ep + tiny))
+        )
 
     def b(self, h, ep, T):
         """

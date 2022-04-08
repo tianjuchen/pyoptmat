@@ -16,8 +16,7 @@ class CommonFlowRule:
         numer = utility.differentiate(
             lambda x: self.model.flow_rate(x, self.h, self.t, self.T)[0], self.s
         )
-        print("exact: ", exact)
-        print("numer: ", numer)
+
         self.assertTrue(np.allclose(exact, numer, rtol=1.0e-4))
 
     def test_history_rate(self):

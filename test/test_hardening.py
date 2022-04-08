@@ -91,7 +91,7 @@ class TestVoceIsotropicThetaReceoveryHardening(unittest.TestCase, HardeningBase)
         self.model = hardening.Theta0RecoveryVoceIsotropicHardeningModel(
             CP(self.tau), CP(self.theta), CP(self.R0), CP(self.r1), CP(self.r2)
         )
-        
+
         self.nbatch = 10
 
         self.s = torch.linspace(90, 100, self.nbatch)
@@ -155,6 +155,7 @@ class TestChabocheKinematicHardeningRecovery(unittest.TestCase, HardeningBase):
         self.ep = torch.linspace(0.1, 0.2, self.nbatch)
         self.T = torch.zeros_like(self.t)
 
+
 class TestYaguchiHardeningModel(unittest.TestCase, HardeningBase):
     def setUp(self):
         self.br = torch.tensor(1000.0)
@@ -162,7 +163,8 @@ class TestYaguchiHardeningModel(unittest.TestCase, HardeningBase):
         self.A = torch.tensor(-60.0)
         self.B = torch.tensor(-17.0)
         self.model = hardening.YaguchiHardeningModel(
-            CP(self.br), CP(self.bh), CP(self.A), CP(self.B))
+            CP(self.br), CP(self.bh), CP(self.A), CP(self.B)
+        )
 
         self.nbatch = 10
 
