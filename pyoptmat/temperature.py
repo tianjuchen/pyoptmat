@@ -663,3 +663,77 @@ class TTBScaling(TemperatureParameter):
     @property
     def shape(self):
         return self.A.shape
+
+
+class PiecewiseScalingUpdate(TemperatureParameter):
+    """
+    Piecewise linear interpolation, mimics scipy.interp1d with
+    default options
+
+    Args:
+      control (torch.tensor):   temperature control points (npoints,)
+      values (torch.tensor):    values at control points (npoints, ) +
+                                param.shape
+
+    Keyword Args:
+      values_scale_fn (function):   numerical scaling function for values,
+                                    defaults to no scaling
+    """
+
+    def __init__(self, control, values, *args, values_scale_fn=lambda x: x, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.control = control
+        self.values = values
+
+        self.values_scale_fn = values_scale_fn
+
+        self.batch = values.dim() > 1
+        self.nback = 3
+
+    def value(self, T):
+        """
+        Return the function value
+
+        Args:
+          T (torch.tensor):   current temperature
+
+        Returns:
+          torch.tensor:       value at the given temperatures
+        """
+        gi = (
+            torch.remainder(
+                torch.sum((self.control[:, None] - T) <= 0, dim=0),
+                self.control.shape[0],
+            )
+            - 1
+        )
+
+        flag = self.values.dim() >= 3
+
+        if flag:
+            upcontrol = self.control.repeat(
+                (self.values.shape[0],) + (self.nback,) + (1,)
+            )
+            upgi = gi.repeat((self.values.shape[0],) + (self.nback,) + (1,))
+        else:
+            upcontrol = self.control.repeat((self.nback,) + (1,))
+            upgi = gi.repeat((self.nback,) + (1,))
+
+        vcurr = self.values_scale_fn(self.values)
+        slopes = torch.diff(vcurr, dim=-1) / torch.diff(upcontrol, dim=-1)
+
+        if self.batch:
+            return torch.gather(vcurr, -1, upgi)[..., None] + torch.gather(
+                slopes, -1, upgi
+            )[..., None] * (T - self.control[gi])
+        return torch.gather(vcurr, -1, gi) + torch.gather(slopes, -1, gi) * (
+            T - self.control[gi]
+        )
+
+    @property
+    def shape(self):
+        """
+        Shape of the underlying parameter
+        """
+        return self.values.shape[1:]

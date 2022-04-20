@@ -720,12 +720,12 @@ class IsoKinMacaulayHyper(FlowRule):
         kh = self.kinematic.value(h[:, self.isotropic.nhist :])
 
         iv = utility.macaulay((torch.abs(s - kh) - self.s0(T) - ih) / self.eta(T))
-        frate = self.C_v(T) * torch.sinh(iv ** self.n(T)) * torch.sign(s - kh)
+        frate = self.C_v(T) * torch.sinh(iv) ** self.n(T) * torch.sign(s - kh)
         dfrate_dstress = (
             self.C_v(T)
-            * torch.cosh(iv ** self.n(T))
             * self.n(T)
-            * (iv ** (self.n(T) - 1))
+            * torch.sinh(iv) ** (self.n(T) - 1)
+            * torch.cosh(iv)
             / self.eta(T)
         )
         return (frate, dfrate_dstress)
@@ -752,11 +752,11 @@ class IsoKinMacaulayHyper(FlowRule):
 
         res = (
             self.C_v(T)
-            * torch.cosh(iv ** self.n(T))
             * self.n(T)
-            * (iv ** (self.n(T) - 1))
-            * torch.sign(s - kh)
+            * torch.sinh(iv) ** (self.n(T) - 1)
+            * torch.cosh(iv)
             / -self.eta(T)
+            * torch.sign(s - kh)
         )
 
         return res
@@ -783,9 +783,9 @@ class IsoKinMacaulayHyper(FlowRule):
 
         res = (
             self.C_v(T)
-            * torch.cosh(iv ** self.n(T))
             * self.n(T)
-            * (iv ** (self.n(T) - 1))
+            * torch.sinh(iv) ** (self.n(T) - 1)
+            * torch.cosh(iv)
             / -self.eta(T)
         )
         return res
