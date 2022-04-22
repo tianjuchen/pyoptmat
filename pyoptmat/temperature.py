@@ -688,7 +688,7 @@ class PiecewiseScalingUpdate(TemperatureParameter):
 
         self.values_scale_fn = values_scale_fn
 
-        self.batch = values.dim() > 1
+        self.batch = values.dim() >= 3
         self.nback = 3
 
     def value(self, T):
@@ -701,6 +701,9 @@ class PiecewiseScalingUpdate(TemperatureParameter):
         Returns:
           torch.tensor:       value at the given temperatures
         """
+
+        flag = self.values.dim() >= 3
+
         gi = (
             torch.remainder(
                 torch.sum((self.control[:, None] - T) <= 0, dim=0),
@@ -709,27 +712,32 @@ class PiecewiseScalingUpdate(TemperatureParameter):
             - 1
         )
 
-        flag = self.values.dim() >= 3
-
         if flag:
+
             upcontrol = self.control.repeat(
                 (self.values.shape[0],) + (self.nback,) + (1,)
             )
+
             upgi = gi.repeat((self.values.shape[0],) + (self.nback,) + (1,))
         else:
+
             upcontrol = self.control.repeat((self.nback,) + (1,))
+
             upgi = gi.repeat((self.nback,) + (1,))
 
         vcurr = self.values_scale_fn(self.values)
         slopes = torch.diff(vcurr, dim=-1) / torch.diff(upcontrol, dim=-1)
 
         if self.batch:
-            return torch.gather(vcurr, -1, upgi)[..., None] + torch.gather(
-                slopes, -1, upgi
-            )[..., None] * (T - self.control[gi])
-        return torch.gather(vcurr, -1, gi) + torch.gather(slopes, -1, gi) * (
-            T - self.control[gi]
-        )
+            res = torch.gather(vcurr, -1, upgi) + torch.gather(slopes, -1, upgi) * (
+                T - self.control[gi]
+            )
+            return res[0].T
+        else:
+            res = torch.gather(vcurr, -1, upgi) + torch.gather(slopes, -1, upgi) * (
+                T - self.control[gi]
+            )
+            return res
 
     @property
     def shape(self):
