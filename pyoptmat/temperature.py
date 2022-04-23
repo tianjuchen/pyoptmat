@@ -702,8 +702,6 @@ class PiecewiseScalingUpdate(TemperatureParameter):
           torch.tensor:       value at the given temperatures
         """
 
-        flag = self.values.dim() >= 3
-
         gi = (
             torch.remainder(
                 torch.sum((self.control[:, None] - T) <= 0, dim=0),
@@ -712,7 +710,7 @@ class PiecewiseScalingUpdate(TemperatureParameter):
             - 1
         )
 
-        if flag:
+        if self.batch:
 
             upcontrol = self.control.repeat(
                 (self.values.shape[0],) + (self.nback,) + (1,)

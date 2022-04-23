@@ -1187,7 +1187,6 @@ class ChabocheHardeningModelRecovery(KinematicHardeningModel):
         Returns:
           torch.tensor:       internal variable rate
         """
-        print(self.C(T).size(), self.g(T).size(), self.b(T).size(), self.r(T).size(), h.size())
         return (
             self.C(T)[None, ...] * ep[:, None]
             - self.g(T)[None, ...] * h * torch.abs(ep)[:, None]
