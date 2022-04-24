@@ -735,7 +735,7 @@ class PiecewiseScalingUpdate(TemperatureParameter):
             res = torch.gather(vcurr, -1, upgi) + torch.gather(slopes, -1, upgi) * (
                 T - self.control[gi]
             )
-            return res
+            return res[0].T
 
     @property
     def shape(self):
