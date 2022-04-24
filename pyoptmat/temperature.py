@@ -701,7 +701,6 @@ class PiecewiseScalingUpdate(TemperatureParameter):
         Returns:
           torch.tensor:       value at the given temperatures
         """
-
         gi = (
             torch.remainder(
                 torch.sum((self.control[:, None] - T) <= 0, dim=0),
@@ -732,10 +731,16 @@ class PiecewiseScalingUpdate(TemperatureParameter):
             )
             return res[0].T
         else:
-            res = torch.gather(vcurr, -1, upgi) + torch.gather(slopes, -1, upgi) * (
-                T - self.control[gi]
-            )
-            return res[0].T
+            if gi.shape[0] <= 1:
+                res = torch.gather(vcurr, -1, upgi) + torch.gather(slopes, -1, upgi) * (
+                    T - self.control[gi]
+                )
+                return res[0]
+            else:
+                res = torch.gather(vcurr, -1, upgi) + torch.gather(slopes, -1, upgi) * (
+                    T - self.control[gi]
+                )
+                return res[0][:, None]
 
     @property
     def shape(self):
