@@ -320,6 +320,7 @@ class TestIsoKinPartialViscoplasticity(unittest.TestCase, CommonFlowRule):
         self.s0 = torch.tensor(11.0)
         self.alpha = torch.tensor(0.1)
         self.beta = torch.tensor(0.9)
+        self.gamma = torch.tensor(0.5)
 
         self.nbatch = 10
 
@@ -337,6 +338,7 @@ class TestIsoKinPartialViscoplasticity(unittest.TestCase, CommonFlowRule):
             CP(self.s0),
             CP(self.alpha),
             CP(self.beta),
+            CP(self.gamma),
             self.iso,
             self.kin,
         )
