@@ -21,10 +21,12 @@ if __name__ == "__main__":
     strain = data.strains.data[:,0]
     stress = data.stresses.data[:,0]
 
+    plt.figure(figsize=(6.4, 4.8))
     plt.plot(strain, stress, lw = 2)
     plt.xlabel("Strain (mm/mm)", fontsize=16)
     plt.ylabel("Stress (MPa)", fontsize=16)
-    plt.xticks(fontsize=11)
-    plt.yticks(fontsize=11)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
     plt.tight_layout()
-    plt.savefig("visualize-%3.2f.pdf" % scale, dpi=600)
+    
+    plt.savefig("visualize-%3.2f.png" % scale, dpi=300)

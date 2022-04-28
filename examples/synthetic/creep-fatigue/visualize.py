@@ -4,6 +4,7 @@ import numpy as np
 import xarray as xr
 import torch
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 
 if __name__ == "__main__":
   scales = [0.0,0.01,0.05,0.1,0.15]
@@ -15,10 +16,18 @@ if __name__ == "__main__":
     database = xr.open_dataset("scale-%3.2f.nc" % scale)
     use = database.where(np.logical_and(np.abs(database.strain_ranges - erange) <= 1e-6, 
         np.abs(database.hold_times - hold_time) <= 1e-6), drop = True)
-    plt.figure()
+    plt.figure(figsize=(6.4, 4.8))
     plt.plot(use.strains[:,0,:], use.stresses[:,0,:])
-    plt.xlabel("Strain (mm/mm)")
-    plt.ylabel("Stress (MPa)")
+    plt.xlabel("Strain (mm/mm)", fontsize=16)
+    plt.ylabel("Stress (MPa)", fontsize=16)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    ax = plt.gca()
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    # ax.xaxis.set_major_formatter(FormatStrFormatter('%.2e'))
+    # ax.xaxis.major.formatter._useMathText = True
+    # ax.set_xticklabels(ax.get_xticks(), rotation = 10)
+    
     plt.tight_layout()
-    plt.savefig("visualize-%3.2f.pdf" % scale)
+    plt.savefig("cyclic-visualize-%3.2f.png" % scale, dpi=300)
 
