@@ -190,11 +190,15 @@ class TestIsoKinChabocheViscoplasticity(unittest.TestCase, CommonFlowRule):
         self.assertTrue(np.allclose(i1, i2, rtol=1.0e-4))
 
 
-class TestIsoKinhyper(unittest.TestCase, CommonFlowRule):
+class TestChabocheIsoKinhyper(unittest.TestCase, CommonFlowRule):
     def setUp(self):
-        self.alpha = torch.tensor(1.0e-6)
-        self.beta = torch.tensor(0.07)
+        self.n = torch.tensor(5.2)
+        self.eta = torch.tensor(110.0)
         self.s0 = torch.tensor(11.0)
+        self.alpha = torch.tensor(0.1)
+        self.beta = torch.tensor(0.9)
+        self.gamma = torch.tensor(1.0)
+        self.eps_0 = torch.tensor(1.0e-3)
 
         self.nbatch = 10
 
@@ -206,8 +210,16 @@ class TestIsoKinhyper(unittest.TestCase, CommonFlowRule):
         self.g = torch.tensor([1.2, 100, 50])
         self.kin = hardening.ChabocheHardeningModel(CP(self.C), CP(self.g))
 
-        self.model = flowrules.IsoKinhyper(
-            CP(self.alpha), CP(self.beta), CP(self.s0), self.iso, self.kin
+        self.model = flowrules.ChabocheIsoKinhyper(
+            CP(self.n),
+            CP(self.eta),
+            CP(self.s0),
+            CP(self.alpha),
+            CP(self.beta),
+            CP(self.gamma),
+            CP(self.eps_0),
+            self.iso,
+            self.kin,
         )
 
         self.s = torch.linspace(150, 200, self.nbatch)

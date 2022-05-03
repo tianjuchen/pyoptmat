@@ -406,7 +406,7 @@ class IsoKinViscoplasticity(FlowRule):
         return res
 
 
-class IsoKinhyper(FlowRule):
+class ChabocheIsoKinhyper(FlowRule):
     """
     Viscoplasticity with isotropic and kinematic hardening, defined as
 
@@ -436,13 +436,17 @@ class IsoKinhyper(FlowRule):
       kinematic (:py:class:`pyoptmat.hardening.IsotropicHardeningModel`): object providing the kinematic hardening model
     """
 
-    def __init__(self, alpha, beta, s0, isotropic, kinematic):
+    def __init__(self, n, eta, s0, alpha, beta, gamma, eps_0, isotropic, kinematic):
         super().__init__()
         self.isotropic = isotropic
         self.kinematic = kinematic
+        self.n = n
+        self.eta = eta
+        self.s0 = s0
         self.alpha = alpha
         self.beta = beta
-        self.s0 = s0
+        self.gamma = gamma
+        self.eps_0 = eps_0
 
     def flow_rate(self, s, h, t, T):
         """
@@ -461,13 +465,20 @@ class IsoKinhyper(FlowRule):
         ih = self.isotropic.value(h[:, : self.isotropic.nhist])
         kh = self.kinematic.value(h[:, self.isotropic.nhist :])
 
+        iv = utility.macaulay(
+            (torch.abs(s - kh * self.beta(T)) - self.s0(T) - ih * self.alpha(T))
+            / (self.eta(T) * self.gamma(T))
+        )
+
         return (
-            self.alpha(T)
-            * torch.sinh(self.beta(T) * (torch.abs(s - kh) - self.s0(T) - ih)),
-            self.alpha(T)
-            * torch.cosh(self.beta(T) * (torch.abs(s - kh) - self.s0(T) - ih))
-            * self.beta(T)
-            * torch.sign(s - kh),
+            self.eps_0(T)
+            * torch.sinh(iv ** self.n(T))
+            * torch.sign(s - kh * self.beta(T)),
+            self.eps_0(T)
+            * torch.cosh(iv ** self.n(T))
+            * self.n(T)
+            * (iv ** (self.n(T) - 1))
+            / (self.eta(T) * self.gamma(T)),
         )
 
     def dflow_diso(self, s, h, t, T):
@@ -488,9 +499,20 @@ class IsoKinhyper(FlowRule):
             h[:, self.isotropic.nhist : self.isotropic.nhist + self.kinematic.nhist]
         )
 
-        iv = torch.abs(s - kh) - self.s0(T) - ih
+        iv = utility.macaulay(
+            (torch.abs(s - kh * self.beta(T)) - self.s0(T) - ih * self.alpha(T))
+            / (self.eta(T) * self.gamma(T))
+        )
 
-        return self.alpha(T) * torch.cosh(self.beta(T) * iv) * -self.beta(T)
+        return (
+            self.eps_0(T)
+            * torch.cosh(iv ** self.n(T))
+            * -self.alpha(T)
+            * self.n(T)
+            * (iv ** (self.n(T) - 1))
+            / (self.eta(T) * self.gamma(T))
+            * torch.sign(s - kh * self.beta(T))
+        )
 
     def dflow_dkin(self, s, h, t, T):
         """
@@ -510,13 +532,18 @@ class IsoKinhyper(FlowRule):
             h[:, self.isotropic.nhist : self.isotropic.nhist + self.kinematic.nhist]
         )
 
-        iv = torch.abs(s - kh) - self.s0(T) - ih
+        iv = utility.macaulay(
+            (torch.abs(s - kh * self.beta(T)) - self.s0(T) - ih * self.alpha(T))
+            / (self.eta(T) * self.gamma(T))
+        )
 
         return (
-            self.alpha(T)
-            * torch.cosh(self.beta(T) * iv)
+            self.eps_0(T)
+            * torch.cosh(iv ** self.n(T))
             * -self.beta(T)
-            * torch.sign(s - kh)
+            * self.n(T)
+            * (iv ** (self.n(T) - 1))
+            / (self.eta(T) * self.gamma(T))
         )
 
     @property
