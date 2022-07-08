@@ -279,6 +279,16 @@ def format_cyclic(cycles, predictions):
     Returns:
       torch.tensor:                 processed results
     """
+    
+    # If this is slow we can probably remove the for loop
+    result = torch.zeros_like(predictions)
+    for j in range(cycles.shape[1]):
+        uc = cycles[:, j]  # Correct but dangerous for future expansion
+        for i in range(uc[-1] + 1):
+            curr = uc == i
+            vals, _ = torch.max(predictions[curr, j], axis=0)
+            result[curr, j] = vals
+    """
     # If this is slow we can probably remove the for loop
     result = torch.zeros_like(predictions)
     uc = cycles[:, 0]  # Correct but dangerous for future expansion
@@ -286,7 +296,7 @@ def format_cyclic(cycles, predictions):
         curr = uc == i
         vals, _ = torch.max(predictions[curr], axis=0)
         result[curr] = vals
-
+    """
     return result
 
 
@@ -529,7 +539,7 @@ exp_map = {
     "creep": 3,
     "stress_cyclic": 4,
     "abstract_tensile": 5,
-    # "direct_data": 6,
+    "direct_data": 6,
 }
 # Function to use to process each test type
 exp_fns = {
@@ -539,7 +549,7 @@ exp_fns = {
     "creep": format_relaxation,
     "stress_cyclic": format_cyclic,
     "abstract_tensile": format_abstract_tensile,
-    # "direct_data": format_direct_data,
+    "direct_data": format_direct_data,
 }
 # Map to numbers instead
 exp_fns_num = {exp_map[k]: v for k, v in exp_fns.items()}
