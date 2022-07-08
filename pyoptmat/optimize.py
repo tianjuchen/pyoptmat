@@ -51,6 +51,7 @@ from pyro.distributions.transforms import block_autoregressive, iterated
 from functools import partial
 import contextlib
 
+
 def bound_factor(mean, factor, min_bound=None):
     """
     Apply the bounded_scale_function map but set the upper bound as mean*(1+factor)
@@ -1227,35 +1228,34 @@ class HierarchicalMLE(PyroModule):
             setattr(
                 self,
                 self.top_vars[-1],
-                PyroParam(loc_loc, 
-                    constraint = constraints.interval(0.0, 1.0)),
+                PyroParam(loc_loc, constraint=constraints.interval(0.0, 1.0)),
             )
             self.top_vars.append(var + scale_suffix)
             setattr(
                 self,
                 self.top_vars[-1],
-                PyroParam(scale_scale,
-                    constraint=constraints.positive),
+                PyroParam(scale_scale, constraint=constraints.positive),
             )
 
             # The tricks are: 1) use lambda self and 2) remember how python binds...
             setattr(
                 self,
                 var,
-                PyroParam(torch.zeros_like(loc_loc), 
-                    constraint = constraints.interval(0.0, 1.0)
+                PyroParam(
+                    torch.zeros_like(loc_loc), constraint=constraints.interval(0.0, 1.0)
                 ),
             )
-            
-        
+
         # Setup the noise
         if self.include_noise:
             if self.type_noise:
-                self.eps = PyroParam(torch.ones_like(noise_prior), 
-                    constraint = constraints.positive)
+                self.eps = PyroParam(
+                    torch.ones_like(noise_prior), constraint=constraints.positive
+                )
             else:
-                self.eps = PyroParam(torch.ones_like(noise_prior), 
-                    constraint = constraints.positive)
+                self.eps = PyroParam(
+                    torch.ones_like(noise_prior), constraint=constraints.positive
+                )
         else:
             self.eps = noise_prior
 
@@ -1292,7 +1292,7 @@ class HierarchicalMLE(PyroModule):
         def guide(exp_data, exp_cycles, exp_types, exp_control, exp_results=None):
             # Setup and sample the top-level loc and scale
             pass
-            
+
         return guide
 
     def get_extra_params(self):
@@ -1513,14 +1513,14 @@ class HierarchicalRegularizerModel(PyroModule):
         """
         return [getattr(self, name) for name in self.bot_vars]
 
-    def L2_regularizer(self, my_parameters, lam=torch.tensor(1.)):
+    def L2_regularizer(self, my_parameters, lam=torch.tensor(1.0)):
         """
         Define the L2 regularizer
         """
         reg_loss = 0.0
         for param in my_parameters:
             reg_loss = reg_loss + param.pow(2.0).sum()
-        return lam*reg_loss
+        return lam * reg_loss
 
     def make_guide(self):
         # pylint: disable=unused-variable
@@ -1586,7 +1586,11 @@ class HierarchicalRegularizerModel(PyroModule):
                         + 0.5,
                         constraint=constraints.interval(0.0, 1.0),
                     )
-                    pyro.factor(name + self.reg_suffix, self.L2_regularizer(ll_param), has_rsample=True)
+                    pyro.factor(
+                        name + self.reg_suffix,
+                        self.L2_regularizer(ll_param),
+                        has_rsample=True,
+                    )
                     param_value = pyro.sample(name, dist.Delta(ll_param).to_event(dim))
 
         self.extra_param_names = [var + self.param_suffix for var in self.names]
@@ -1660,17 +1664,17 @@ class HierarchicalRegularizerModel(PyroModule):
         return results
 
 
-
 # define VAE based inference model for extrapolate data
+
 
 class ExtrapNN(nn.Module):
     def __init__(self, sdata, fdata, hidden_dim):
         super().__init__()
         self.batch_size = sdata.shape[1]
         # setup the two linear transformations used
-        self.fc1 = nn.Linear(sdata.shape[0]*sdata.shape[1], hidden_dim)
+        self.fc1 = nn.Linear(sdata.shape[0] * sdata.shape[1], hidden_dim)
         self.fc21 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc32 = nn.Linear(hidden_dim, fdata.shape[0]*fdata.shape[1])
+        self.fc32 = nn.Linear(hidden_dim, fdata.shape[0] * fdata.shape[1])
         # setup the non-linearities
         self.softplus = nn.Softplus()
         self.sigmoid = nn.Sigmoid()
@@ -1679,7 +1683,7 @@ class ExtrapNN(nn.Module):
         hidden1 = F.relu(self.fc1(data.T.flatten(0)))
         hidden2 = F.relu(self.fc21(hidden1))
         x = self.fc32(hidden2)
-        return x.reshape(self.batch_size, int(x.shape[0]/self.batch_size)).T
+        return x.reshape(self.batch_size, int(x.shape[0] / self.batch_size)).T
 
 
 class HierarchicalExtrapModel(PyroModule):
@@ -1751,12 +1755,12 @@ class HierarchicalExtrapModel(PyroModule):
         self.scale_suffix = scale_suffix
         self.param_suffix = param_suffix
         self.include_noise = include_noise
-        
+
         self.names = names
 
         # Store the surrogate model
         self.surrogate_model = surrogate_model
-        
+
         # We need these for the shapes...
         self.loc_loc_priors = loc_loc_priors
         self.loc_scale_priors = loc_scale_priors
@@ -1842,7 +1846,9 @@ class HierarchicalExtrapModel(PyroModule):
         is going to need
         """
 
-        def guide(exp_data, exp_cycles, exp_types, exp_control, exp_results, full_results=None):
+        def guide(
+            exp_data, exp_cycles, exp_types, exp_control, exp_results, full_results=None
+        ):
             # Setup and sample the top-level loc and scale
             top_loc_samples = []
             top_scale_samples = []
@@ -1919,7 +1925,15 @@ class HierarchicalExtrapModel(PyroModule):
 
         return [pyro.param(name).unconstrained() for name in self.extra_param_names]
 
-    def forward(self, exp_data, exp_cycles, exp_types, exp_control, exp_results, full_results=None):
+    def forward(
+        self,
+        exp_data,
+        exp_cycles,
+        exp_types,
+        exp_control,
+        exp_results,
+        full_results=None,
+    ):
         # pylint: disable=unused-variable
         """
         Evaluate the forward model, optionally conditioned by the experimental
@@ -1965,15 +1979,18 @@ class HierarchicalExtrapModel(PyroModule):
                 predictions[:, :, 0], exp_cycles, exp_types
             )
             mean_results = self.surrogate_model(results)
-            
+
             # Sample!
             with pyro.plate("time", full_results.shape[0]):
-                pyro.sample("obs", dist.Normal(mean_results, full_noise), obs=full_results)
+                pyro.sample(
+                    "obs", dist.Normal(mean_results, full_noise), obs=full_results
+                )
 
         return results
-        
+
+
 class Interp1d(torch.autograd.Function):
-    # use the interpolate function developed here: 
+    # use the interpolate function developed here:
     # https://github.com/aliutkus/torchinterp1d/blob/master/torchinterp1d/interp1d.py
     def __call__(self, x, y, xnew, out=None):
         return self.forward(x, y, xnew, out)
@@ -2008,9 +2025,8 @@ class Interp1d(torch.autograd.Function):
         v = {}
         device = []
         eps = torch.finfo(y.dtype).eps
-        for name, vec in {'x': x, 'y': y, 'xnew': xnew}.items():
-            assert len(vec.shape) <= 2, 'interp1d: all inputs must be '\
-                                        'at most 2-D.'
+        for name, vec in {"x": x, "y": y, "xnew": xnew}.items():
+            assert len(vec.shape) <= 2, "interp1d: all inputs must be " "at most 2-D."
             if len(vec.shape) == 1:
                 v[name] = vec[None, :]
             else:
@@ -2018,37 +2034,40 @@ class Interp1d(torch.autograd.Function):
             is_flat[name] = v[name].shape[0] == 1
             require_grad[name] = vec.requires_grad
             device = list(set(device + [str(vec.device)]))
-        assert len(device) == 1, 'All parameters must be on the same device.'
+        assert len(device) == 1, "All parameters must be on the same device."
         device = device[0]
 
         # Checking for the dimensions
-        assert (v['x'].shape[1] == v['y'].shape[1]
-                and (
-                     v['x'].shape[0] == v['y'].shape[0]
-                     or v['x'].shape[0] == 1
-                     or v['y'].shape[0] == 1
-                    )
-                ), ("x and y must have the same number of columns, and either "
-                    "the same number of row or one of them having only one "
-                    "row.")
+        assert v["x"].shape[1] == v["y"].shape[1] and (
+            v["x"].shape[0] == v["y"].shape[0]
+            or v["x"].shape[0] == 1
+            or v["y"].shape[0] == 1
+        ), (
+            "x and y must have the same number of columns, and either "
+            "the same number of row or one of them having only one "
+            "row."
+        )
 
         reshaped_xnew = False
-        if ((v['x'].shape[0] == 1) and (v['y'].shape[0] == 1)
-           and (v['xnew'].shape[0] > 1)):
+        if (
+            (v["x"].shape[0] == 1)
+            and (v["y"].shape[0] == 1)
+            and (v["xnew"].shape[0] > 1)
+        ):
             # if there is only one row for both x and y, there is no need to
             # loop over the rows of xnew because they will all have to face the
             # same interpolation problem. We should just stack them together to
             # call interp1d and put them back in place afterwards.
-            original_xnew_shape = v['xnew'].shape
-            v['xnew'] = v['xnew'].contiguous().view(1, -1)
+            original_xnew_shape = v["xnew"].shape
+            v["xnew"] = v["xnew"].contiguous().view(1, -1)
             reshaped_xnew = True
 
         # identify the dimensions of output and check if the one provided is ok
-        D = max(v['x'].shape[0], v['xnew'].shape[0])
+        D = max(v["x"].shape[0], v["xnew"].shape[0])
 
-        shape_ynew = (D, v['xnew'].shape[-1])
+        shape_ynew = (D, v["xnew"].shape[-1])
         if out is not None:
-            if out.numel() != shape_ynew[0]*shape_ynew[1]:
+            if out.numel() != shape_ynew[0] * shape_ynew[1]:
                 # The output provided is of incorrect shape.
                 # Going for a new one
                 out = None
@@ -2068,11 +2087,10 @@ class Interp1d(torch.autograd.Function):
 
         # expanding xnew to match the number of rows of x in case only one xnew is
         # provided
-        if v['xnew'].shape[0] == 1:
-            v['xnew'] = v['xnew'].expand(v['x'].shape[0], -1)
+        if v["xnew"].shape[0] == 1:
+            v["xnew"] = v["xnew"].expand(v["x"].shape[0], -1)
 
-        torch.searchsorted(v['x'].contiguous(),
-                           v['xnew'].contiguous(), out=ind)
+        torch.searchsorted(v["x"].contiguous(), v["xnew"].contiguous(), out=ind)
 
         # the `-1` is because searchsorted looks for the index where the values
         # must be inserted to preserve order. And we want the index of the
@@ -2081,8 +2099,8 @@ class Interp1d(torch.autograd.Function):
         # we clamp the index, because the number of intervals is x.shape-1,
         # and the left neighbour should hence be at most number of intervals
         # -1, i.e. number of columns in x -2
-        ind = torch.clamp(ind, 0, v['x'].shape[1] - 1 - 1)
-        
+        ind = torch.clamp(ind, 0, v["x"].shape[1] - 1 - 1)
+
         # helper function to select stuff according to the found indices.
         def sel(name):
             if is_flat[name]:
@@ -2092,29 +2110,28 @@ class Interp1d(torch.autograd.Function):
         # activating gradient storing for everything now
         enable_grad = False
         saved_inputs = []
-        for name in ['x', 'y', 'xnew']:
+        for name in ["x", "y", "xnew"]:
             if require_grad[name]:
                 enable_grad = True
                 saved_inputs += [v[name]]
             else:
-                saved_inputs += [None, ]
+                saved_inputs += [
+                    None,
+                ]
         # assuming x are sorted in the dimension 1, computing the slopes for
         # the segments
-        is_flat['slopes'] = is_flat['x']
+        is_flat["slopes"] = is_flat["x"]
 
         # now we have found the indices of the neighbors, we start building the
         # output. Hence, we start also activating gradient tracking
         with torch.enable_grad() if enable_grad else contextlib.suppress():
-            v['slopes'] = (
-                    (v['y'][:, 1:]-v['y'][:, :-1])
-                    /
-                    (eps + (v['x'][:, 1:]-v['x'][:, :-1]))
-                )
+            v["slopes"] = (v["y"][:, 1:] - v["y"][:, :-1]) / (
+                eps + (v["x"][:, 1:] - v["x"][:, :-1])
+            )
 
             # now build the linear interpolation
-            ynew = sel('y') + sel('slopes')*(
-                                    v['xnew'] - sel('x'))
-            
+            ynew = sel("y") + sel("slopes") * (v["xnew"] - sel("x"))
+
             if reshaped_xnew:
                 ynew = ynew.view(original_xnew_shape)
 
@@ -2125,10 +2142,14 @@ class Interp1d(torch.autograd.Function):
     def backward(ctx, grad_out):
         inputs = ctx.saved_tensors[1:]
         gradients = torch.autograd.grad(
-                        ctx.saved_tensors[0],
-                        [i for i in inputs if i is not None],
-                        grad_out, retain_graph=True)
-        result = [None, ] * 5
+            ctx.saved_tensors[0],
+            [i for i in inputs if i is not None],
+            grad_out,
+            retain_graph=True,
+        )
+        result = [
+            None,
+        ] * 5
         pos = 0
         for index in range(len(inputs)):
             if inputs[index] is not None:
@@ -2205,7 +2226,7 @@ class HierarchicalDenseModel(PyroModule):
         self.scale_suffix = scale_suffix
         self.param_suffix = param_suffix
         self.include_noise = include_noise
-        
+
         self.names = names
 
         # We need these for the shapes...
@@ -2293,8 +2314,18 @@ class HierarchicalDenseModel(PyroModule):
         is going to need
         """
 
-        def guide(exp_data, exp_cycles, exp_types, exp_control, exp_results, 
-            full_data, full_cycles, full_types, full_control, full_results=None):
+        def guide(
+            exp_data,
+            exp_cycles,
+            exp_types,
+            exp_control,
+            exp_results,
+            full_data,
+            full_cycles,
+            full_types,
+            full_control,
+            full_results=None,
+        ):
             # Setup and sample the top-level loc and scale
             top_loc_samples = []
             top_scale_samples = []
@@ -2371,8 +2402,19 @@ class HierarchicalDenseModel(PyroModule):
 
         return [pyro.param(name).unconstrained() for name in self.extra_param_names]
 
-    def forward(self, exp_data, exp_cycles, exp_types, exp_control, exp_results,
-                full_data, full_cycles, full_types, full_control, full_results=None):
+    def forward(
+        self,
+        exp_data,
+        exp_cycles,
+        exp_types,
+        exp_control,
+        exp_results,
+        full_data,
+        full_cycles,
+        full_types,
+        full_control,
+        full_results=None,
+    ):
         # pylint: disable=unused-variable
         """
         Evaluate the forward model, optionally conditioned by the experimental
@@ -2413,22 +2455,18 @@ class HierarchicalDenseModel(PyroModule):
             predictions = bmodel.solve_both(
                 exp_data[0], exp_data[1], exp_data[2], exp_control
             )
-            
+
             # interpolate to dense data
-            old_x = torch.linspace(0, 1, exp_data.shape[1]).repeat((exp_data.shape[2],) + (1,))
+            old_x = torch.linspace(0, 1, exp_data.shape[1]).repeat(
+                (exp_data.shape[2],) + (1,)
+            )
             new_x = torch.linspace(0, 1, full_data.shape[1])
-            
-            interp_model = Interp1d(
-                old_x, predictions[:, :, 0].T, new_x
-            )
-            mean_results = interp_model(
-                old_x, predictions[:, :, 0].T, new_x
-            ).T
+
+            interp_model = Interp1d(old_x, predictions[:, :, 0].T, new_x)
+            mean_results = interp_model(old_x, predictions[:, :, 0].T, new_x).T
             # Process the results
-            results = experiments.convert_results(
-                mean_results, full_cycles, full_types
-            )
-            
+            results = experiments.convert_results(mean_results, full_cycles, full_types)
+
             # Sample!
             with pyro.plate("time", full_results.shape[0]):
                 pyro.sample("obs", dist.Normal(results, full_noise), obs=full_results)

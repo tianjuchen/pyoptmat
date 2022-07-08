@@ -549,10 +549,10 @@ class PiecewiseScaling(TemperatureParameter):
             )
             - 1
         )
-        # print("gi are: ", (self.control[:, None] - T) <= 0)
+
         vcurr = self.values_scale_fn(self.values)
         slopes = torch.diff(vcurr, dim=-1) / torch.diff(self.control, dim=0)
-        
+
         if self.batch:
             return torch.gather(vcurr, -1, gi[:, None])[:, 0] + torch.gather(
                 slopes, -1, gi[:, None]

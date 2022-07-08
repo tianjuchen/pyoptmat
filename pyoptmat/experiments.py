@@ -279,7 +279,7 @@ def format_cyclic(cycles, predictions):
     Returns:
       torch.tensor:                 processed results
     """
-    
+
     # If this is slow we can probably remove the for loop
     result = torch.zeros_like(predictions)
     for j in range(cycles.shape[1]):
