@@ -7,7 +7,8 @@
 import numpy as np
 
 import matplotlib.pyplot as plt
-
+import scipy.optimize as opt
+import scipy.interpolate as inter
 import torch
 from torch import nn
 
@@ -338,3 +339,79 @@ def add_id(df):
     return df + torch.eye(df.shape[1], device=df.device).reshape(
         (1,) + df.shape[1:]
     ).repeat(df.shape[0], 1, 1)
+
+
+class interp_sample:
+    def __init__(self, nstep):
+        self.nstep = nstep
+
+    def generate_newdata(self, input_data):
+
+        if input_data.dim() == 2:
+            output_data = torch.empty(self.nstep, input_data.shape[-1])
+            # loop for every batch
+            for i in range(input_data.shape[-1]):
+                output_data[:, i] = torch.tensor(
+                    inter.interp1d(
+                        np.linspace(0, 1, len(input_data[:, i].numpy())),
+                        input_data[:, i].numpy(),
+                    )(np.linspace(0, 1, self.nstep))
+                )
+            return output_data
+        elif input_data.dim() == 3:
+            output_data = torch.empty(
+                input_data.shape[0], self.nstep, input_data.shape[-1]
+            )
+            # loop for every batch
+            for j in range(input_data.shape[0]):
+                for i in range(input_data.shape[-1]):
+                    output_data[j, :, i] = torch.tensor(
+                        inter.interp1d(
+                            np.linspace(0, 1, len(input_data[j, :, i].numpy())),
+                            input_data[j, :, i].numpy(),
+                        )(np.linspace(0, 1, self.nstep))
+                    )
+        elif input_data.dim() == 1:
+            # if input_data.shape[0] == 1:
+            # output_data = input_data
+            # else:
+            # output_data = torch.tensor(
+            # inter.interp1d(
+            # np.linspace(0, 1, len(input_data.numpy())), input_data.numpy()
+            # )(np.linspace(0, 1, self.nstep))
+            # )
+            output_data = input_data
+        return output_data
+
+    def interp_value(self, data, results, cycles, types, control):
+
+        new_data = self.generate_newdata(data)
+        new_results = self.generate_newdata(results)
+        new_cycles = self.generate_newdata(cycles)
+        new_types = self.generate_newdata(types)
+        new_control = self.generate_newdata(control)
+        return new_data, new_results, new_cycles, new_types, new_control
+
+
+def extration_on_cycles(data, results, cycles, types, control, c_min, c_max, interpf):
+    f_data = torch.empty_like(data)
+    f_results = torch.empty_like(results)
+    f_cycles = torch.empty_like(cycles)
+    f_types = torch.empty_like(types)
+    f_control = torch.empty_like(control)
+
+    for i in range(results.shape[-1]):
+        relevant = torch.logical_and(cycles[:, i] <= c_max, cycles[:, i] >= c_min)
+        limit_data = data[:, relevant, i][..., None]
+        limit_cycles = cycles[relevant, i][..., None]
+        limit_results = results[relevant, i][..., None]
+
+        c_data = interpf.generate_newdata(limit_data)
+        c_results = interpf.generate_newdata(limit_results)
+        c_cycles = interpf.generate_newdata(limit_cycles)
+
+        f_data[:, :, i] = c_data[:, :, 0]
+        f_results[:, i] = c_results[:, 0]
+        f_cycles[:, i] = c_cycles[:, 0]
+
+    return f_data, f_results, f_cycles, types, control

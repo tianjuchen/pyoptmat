@@ -39,6 +39,7 @@ import torch
 from torch.nn import Module, Parameter
 from torch import nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 import pyro
 from pyro.nn import PyroModule, PyroSample, PyroParam
 import pyro.distributions as dist
@@ -50,6 +51,7 @@ from pyro.infer.autoguide import AutoDiagonalNormal, AutoNormalizingFlow
 from pyro.distributions.transforms import block_autoregressive, iterated
 from functools import partial
 import contextlib
+import tqdm
 
 
 def bound_factor(mean, factor, min_bound=None):
@@ -2972,7 +2974,7 @@ class ExponentialMultipleRegression:
     def coeff_coeff(self, niter, xs, ys):
         coeffs = []
         for i in range(xs.shape[-1]):
-            t = tqdm(range(niter), total=niter, desc="Loss:    ")
+            t = tqdm.tqdm(range(niter), total=niter, desc="Loss:    ")
             for epoch in t:
                 running_loss = self.train_step(xs[:, i], ys[:, i])
                 t.set_description("Loss: %3.2e" % running_loss)
@@ -3297,9 +3299,9 @@ class HierarchicalLogModel(PyroModule):
                 exp_model = LogModel()
                 tmodel = ExponentialMultipleRegression(exp_model)
                 results = tmodel.expolate_func(
-                    self.niter, exp_cycles, exp_results, full_cycles
+                    self.niter, exp_cycles, results, full_cycles
                 )
-
+            """
             else:
                 # interpolate to dense data
                 old_x = torch.linspace(0, 1, exp_data.shape[1]).repeat(
@@ -3309,7 +3311,7 @@ class HierarchicalLogModel(PyroModule):
 
                 interp_model = Interp1d(old_x, results.T, new_x)
                 results = interp_model(old_x, results.T, new_x).T
-
+            """
             # Sample!
             with pyro.plate("time", full_data.shape[1]):
                 pyro.sample("obs", dist.Normal(results, full_noise), obs=full_results)
