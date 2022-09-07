@@ -749,6 +749,7 @@ class PiecewiseScalingUpdate(TemperatureParameter):
         """
         return self.values.shape[1:]
 
+
 class YieldStrengthScaling(TemperatureParameter):
     """
     Parameter that scales as:
