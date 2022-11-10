@@ -192,10 +192,6 @@ class KocksMeckingRegimeFlowRule(FlowRule):
             * torch.log(self.eps0 / torch.abs(e + 1.0e-30))
         )
 
-    def smooth(self, x):
-        k = 1000.0 / x
-        return (1 + torch.exp(-2 * k * (x - self.g0))).reciprocal()
-
     def switch_values(self, vals1, vals2, T, e):
         """
         Switch between the two model results
@@ -207,8 +203,8 @@ class KocksMeckingRegimeFlowRule(FlowRule):
             e (torch.tensor):       strain rates
 
         """
-
-        new_g = self.smooth(self.g(T, e))
+        fac = 100.0
+        new_g = torch.special.expit(fac * (self.g(T, e) - self.g0))
 
         if vals1.clone().dim() > 1:
             dim = vals1.clone().dim() - 1
@@ -1154,10 +1150,6 @@ class AdaptiveViscoplasticity(FlowRule):
             * torch.log(self.eps0 / torch.abs(e + 1.0e-30))
         )
 
-    def smooth(self, x):
-        k = 1000.0 / x
-        return (1 + torch.exp(-2 * k * (x - self.g0))).reciprocal()
-
     def logic(self, T, e):
         """
         logic of rate dependence
@@ -1167,7 +1159,8 @@ class AdaptiveViscoplasticity(FlowRule):
             e (torch.tensor):       strain rates
 
         """
-        new_g = self.smooth(self.g(T, e))
+        fac = 100.0
+        new_g = torch.special.expit(fac * (self.g(T, e) - self.g0))
         logic = new_g >= torch.tensor(1.0)
         return new_g, logic
 
