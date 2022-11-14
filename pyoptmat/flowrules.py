@@ -1160,7 +1160,7 @@ class AdaptiveViscoplasticity(FlowRule):
 
         """
         fac = 100.0
-        new_g = torch.special.expit(fac * (self.g(T, e) - self.g0))
+        new_g = torch.special.expit(fac * (self.g(T, e) - self.g0(T)))
         logic = new_g >= torch.tensor(1.0)
         return new_g, logic
 
