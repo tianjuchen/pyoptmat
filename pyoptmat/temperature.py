@@ -811,7 +811,7 @@ class ArrheniusScaling(TemperatureParameter):
         Returns:
           torch.tensor:       value at the given temperatures
         """
-        return self.A_scale(self.A) * torch.exp(-self.Q_scale(self.Q) / T)
+        return self.A_scale(self.A) * torch.exp(-self.Q_scale(self.Q)/ T)
 
     @property
     def shape(self):
@@ -819,3 +819,80 @@ class ArrheniusScaling(TemperatureParameter):
         Shape of the underlying parameter
         """
         return self.A.shape
+
+
+class TTBWidthScaling(TemperatureParameter):
+    def __init__(self, A, B, b, *args, A_scale=lambda x: x, B_scale=lambda x: x, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.A = A
+        self.B = B
+        self.b = b
+        self.A_scale = A_scale
+        self.B_scale = B_scale
+
+    def value(self, T):
+        """
+        Actual temperature-dependent value
+        Args:
+          T:      current temperatures
+        """
+        L_b = self.A_scale(self.A) * self.b * (1 + self.B_scale(self.B) * T[..., None])
+        return L_b
+
+    @property
+    def shape(self):
+        return self.A.shape
+
+
+class TTBScaling(TemperatureParameter):
+    def __init__(
+        self, mu, b, A, B, *args, A_scale=lambda x: x, B_scale=lambda x: x, **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.mu = mu
+        self.b = b
+        self.A = A
+        self.B = B
+        self.A_scale = A_scale
+        self.B_scale = B_scale
+        self.L_b = TTBWidthScaling(
+            self.A, self.B, self.b, A_scale=self.A_scale, B_scale=self.B_scale
+        )
+
+    def value(self, T):
+        """
+        Actual temperature-dependent value
+        Args:
+        T:      current temperatures
+        """
+        L_b = self.L_b(T)
+        C = self.mu(T)[..., None] * self.b / L_b
+        return C
+
+    @property
+    def shape(self):
+        return self.A.shape
+
+
+class ShearModulus(TemperatureParameter):
+    def __init__(
+        self, E, nu, *args, E_scale=lambda x: x,  **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.E = E
+        self.nu = nu
+        self.E_scale = E_scale
+
+    def value(self, T):
+        """
+        Actual temperature-dependent value
+        Args:
+        T:      current temperatures
+        """
+        E = self.E(T)
+        return self.E_scale(E) / (2 * (1 + self.nu))
+
+    @property
+    def shape(self):
+        E = self.E(T)
+        return E.shape

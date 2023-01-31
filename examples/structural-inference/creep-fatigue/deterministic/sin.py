@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+
+"""
+    Example using the tutorial data to train a deterministic model, rather than
+    a statistical model.
+"""
+
+import sys
+
+sys.path.append("../../../..")
+sys.path.append("..")
+
+import os.path
+import numpy as np
+import numpy.random as ra
+
+import xarray as xr
+import torch
+
+from maker import make_model, load_subset_data
+
+from pyoptmat import optimize, experiments
+from tqdm import tqdm
+
+import matplotlib.pyplot as plt
+
+# Don't care if integration fails
+import warnings
+
+warnings.filterwarnings("ignore")
+
+# Use doubles
+torch.set_default_tensor_type(torch.DoubleTensor)
+
+# Select device to run on
+if torch.cuda.is_available():
+    dev = "cuda:0"
+else:
+    dev = "cpu"
+device = torch.device(dev)
+
+# Maker function returns the ODE model given the parameters
+# Don't try to optimize for the Young's modulus
+def make(n, eta, s0, R, d, C, g, **kwargs):
+    """
+    Maker with the Young's modulus fixed
+    """
+    return make_model(
+        torch.tensor(0.5), n, eta, s0, R, d, C, g, device=device, **kwargs
+    ).to(device)
+
+
+def sin_wave(data, amp=0.002, N_min=5, N_max=8):
+
+    new_data = torch.empty_like(data)
+
+    for i in range(data.shape[-1]):
+        new_data[0, :, i] = torch.linspace(0, data[0, -1, i], data.shape[1])
+        N = ra.randint(N_min, N_max)
+        period = data[0, -1, i] / N
+        new_data[2, :, i] = amp * torch.sin(2 * np.pi / period * new_data[0, :, i])
+
+    new_data[1] = data[1]
+
+    return new_data
+
+
+if __name__ == "__main__":
+
+    # 1) Load the data for the variance of interest,
+    #    cut down to some number of samples, and flatten
+    scale = 0.00
+    nsamples = 1  # 20 is the full number of samples in the default dataset
+    input_data = xr.open_dataset(os.path.join("..", "scale-%3.2f.nc" % scale))
+    data, results, cycles, types, control = load_subset_data(
+        input_data, nsamples, device=device
+    )
+
+    # test
+    new_data = sin_wave(data)
+
+    model = make_model(
+        torch.tensor(0.5, device=device),
+        torch.tensor(ra.normal(0.5, scale), device=device),
+        torch.tensor(ra.normal(0.5, scale), device=device),
+        torch.tensor(ra.normal(0.5, scale), device=device),
+        torch.tensor(ra.normal(0.5, scale), device=device),
+        torch.tensor(ra.normal(0.5, scale), device=device),
+        torch.tensor(ra.normal(0.5, scale, size=(3,)), device=device),
+        torch.tensor(ra.normal(0.5, scale, size=(3,)), device=device),
+        device=device,
+    )
+
+    with torch.no_grad():
+        full_stresses = model.solve_strain(
+            new_data[0, :, 0].unsqueeze(-1),
+            new_data[2, :, 0].unsqueeze(-1),
+            new_data[1, :, 0].unsqueeze(-1),
+        )[:, :, 0]
+
+    plt.plot(new_data[0, :, 0].detach().numpy(), full_stresses.detach().numpy())
+    plt.show()
+    plt.close()
+
+    # 2) Setup names for each parameter and the initial conditions
+    names = ["n", "eta", "s0", "R", "d", "C", "g"]
+    ics = [torch.tensor(ra.uniform(0.25, 0.75), device=device) for i in range(5)] + [
+        torch.tensor(ra.uniform(0.25, 0.75, size=(3,)), device=device),
+        torch.tensor(ra.uniform(0.25, 0.75, size=(3,)), device=device),
+    ]
+
+    print("Initial parameter values:")
+    for n, ic in zip(names, ics):
+        print(("%s:\t" % n) + str(ic))
+    print("")
+
+    # 3) Create the actual model
+    model = optimize.DeterministicModel(make, names, ics)
+
+    # 4) Setup the optimizer
+    niter = 200
+    lr = 1.0e-2
+    optim = torch.optim.Adam(model.parameters(), lr=lr)
+
+    # 5) Setup the objective function
+    loss = torch.nn.MSELoss(reduction="sum")
+
+    # 6) Actually do the optimization!
+    def closure():
+        optim.zero_grad()
+        pred = model(data, cycles, types, control)
+        lossv = loss(pred, results)
+        lossv.backward()
+        return lossv
+
+    t = tqdm(range(niter), total=niter, desc="Loss:    ")
+    loss_history = []
+    for i in t:
+        closs = optim.step(closure)
+        loss_history.append(closs.detach().cpu().numpy())
+        t.set_description("Loss: %3.2e" % loss_history[-1])
+
+    # 7) Check accuracy of the optimized parameters
+    print("")
+    print("Optimized parameter accuracy (target values are all 0.5):")
+    for n in names:
+        print(("%s:\t" % n) + str(getattr(model, n).data))
+
+    # 8) Plot the convergence history
+    plt.figure()
+    plt.plot(loss_history)
+    plt.xlabel("Iteration")
+    plt.ylabel("Loss")
+    plt.tight_layout()
+    plt.show()

@@ -195,7 +195,8 @@ if __name__ == "__main__":
 
     # Maximum strain in the cycle
     max_strains = np.logspace(np.log10(0.002), np.log10(0.02), 5)
-
+    print(np.linspace(np.log10(0.002), np.log10(0.02), 5))
+    sys.exit("stop")
     # Tension hold in the cycle
     tension_holds = np.array([1e-6, 60.0, 5 * 60.0, 60 * 60.0])
 
