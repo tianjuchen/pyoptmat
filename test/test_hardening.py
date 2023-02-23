@@ -70,6 +70,22 @@ class HardeningBase:
         self.assertTrue(np.allclose(exact, numer[:, :, 0], rtol=1.0e-4))
 
 
+class TestPowerlawIsotropicHardening(unittest.TestCase, HardeningBase):
+    def setUp(self):
+        self.A = torch.tensor(100.0)
+        self.p = torch.tensor(2.0)
+        self.model = hardening.PowerlawHardeningModel(self.A, self.p)
+
+        self.nbatch = 10
+
+        self.s = torch.linspace(90, 100, self.nbatch)
+        self.h = torch.reshape(torch.linspace(50, 110, self.nbatch), (self.nbatch, 1))
+        self.t = torch.ones(self.nbatch)
+        self.ep = torch.linspace(0.1, 0.2, self.nbatch)
+        self.T = torch.zeros_like(self.t)
+        self.erate = torch.linspace(0.01, 0.02, self.nbatch)
+
+
 class TestVoceIsotropicHardening(unittest.TestCase, HardeningBase):
     def setUp(self):
         self.R = torch.tensor(100.0)

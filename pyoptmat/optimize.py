@@ -112,6 +112,58 @@ def log_bound_and_scale(scale, bounds):
     return lambda x: torch.clamp(torch.exp(x / scale), bounds[0], bounds[1])
 
 
+class DeterministicHyperElasticModel(Module):
+    """
+    Wrap a material model to provide a :py:mod:`pytorch` deterministic model
+
+    Args:
+      maker (function):         function that returns a valid model as a
+                                :py:class:`pytorch.nn.Module`,
+                                given the input parameters
+      names (list(str)):        names to use for the parameters
+      ics (list(torch.tensor)): initial conditions to use for each parameter
+    """
+
+    def __init__(self, maker, names, ics):
+        super().__init__()
+
+        self.maker = maker
+
+        self.names = names
+
+        # Add all the parameters
+        self.params = names
+        for name, ic in zip(names, ics):
+            setattr(self, name, Parameter(ic))
+
+    def get_params(self):
+        """
+        Return the parameters for input to the model
+        """
+        return [getattr(self, name) for name in self.params]
+
+    def forward(self, exp_data):
+        """
+        Integrate forward and return the results.
+
+        See the :py:mod:`pyoptmat.experiments` module
+        for detailed on how to format the input to this function
+
+        Args:
+          exp_data (torch.tensor):    formatted input experimental data
+          exp_cycles (torch.tensor):  cycle counts for each test
+          exp_types (torch.tensor):   experiment types, as integers
+          exp_control (torch.tensor): stress/strain control flag
+        """
+        model = self.maker(*self.get_params())
+
+        predictions = model.solve_elastic(
+            exp_data[0], exp_data[2], exp_data[1]
+        )
+        return predictions[:, :, 0]
+
+
+
 class DeterministicModel(Module):
     """
     Wrap a material model to provide a :py:mod:`pytorch` deterministic model

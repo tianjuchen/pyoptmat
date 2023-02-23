@@ -208,6 +208,7 @@ class TestKocksMeckingRegimeFlowRule(unittest.TestCase, CommonFlowRule):
 
         self.skip = False
 
+
 class TestSoftKocksMeckingRegimeFlowRule(unittest.TestCase, CommonFlowRule):
     def setUp(self):
         self.nbatch = 10
@@ -253,7 +254,14 @@ class TestSoftKocksMeckingRegimeFlowRule(unittest.TestCase, CommonFlowRule):
         self.sf = 100.0
 
         self.model = flowrules.SoftKocksMeckingRegimeFlowRule(
-            self.model1, self.model2, self.g0, self.mu, self.b, self.eps0, self.k, self.sf
+            self.model1,
+            self.model2,
+            self.g0,
+            self.mu,
+            self.b,
+            self.eps0,
+            self.k,
+            self.sf,
         )
 
         self.s = torch.linspace(150, 200, self.nbatch)
@@ -274,6 +282,7 @@ class TestSoftKocksMeckingRegimeFlowRule(unittest.TestCase, CommonFlowRule):
         self.erate = torch.linspace(1e-2, 1e-3, self.nbatch)
 
         self.skip = False
+
 
 class TestIsoKinViscoplasticity(unittest.TestCase, CommonFlowRule):
     def setUp(self):

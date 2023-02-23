@@ -19,16 +19,21 @@ if __name__ == "__main__":
             ),
             drop=True,
         )
-        plt.figure(figsize=(6.4, 4.8))
-        plt.plot(use.strain[:, 0, :], use.stress[:, 0, :])
-        plt.xlabel("Strain (mm/mm)", fontsize=16)
-        plt.ylabel("Stress (MPa)", fontsize=16)
-        plt.xticks(fontsize=12)
-        plt.yticks(fontsize=12)
         ax = plt.gca()
+        # plt.figure(figsize=(6.4, 4.8))
+        plt.plot(use.strain[:, 0, :], use.stress[:, 0, :], lw=3)
+        plt.xlabel("Strain (mm/mm)", fontsize=27)
+        plt.ylabel("Stress (MPa)", fontsize=27)
+        # plt.xticks(fontsize=27)
+        # plt.yticks(fontsize=27)
+        plt.locator_params(axis='both', nbins=3)
+        plt.tick_params(axis="both", which="major", labelsize=27)
+        for axis in ["top", "bottom", "left", "right"]:
+            ax.spines[axis].set_linewidth(3)
+        ax.tick_params(width=3)
         plt.ticklabel_format(style="sci", axis="x", scilimits=(0, 0))
 
         plt.tight_layout()
-        plt.savefig("cyclic-visualize-%3.2f.png" % scale, dpi=300)
+        plt.savefig("cyclic-visualize-%3.2f.pdf" % scale)
         plt.show()
         plt.close()

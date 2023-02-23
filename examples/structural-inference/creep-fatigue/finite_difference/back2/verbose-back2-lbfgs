@@ -1,0 +1,159 @@
+Initial parameter values:
+n:	tensor(0.1200)
+eta:	tensor(0.1200)
+s0:	tensor(0.1200)
+R:	tensor(0.1200)
+d:	tensor(0.1200)
+C:	tensor([0.1200, 0.1200])
+g:	tensor([0.1200, 0.1200])
+
+Loss:    :   0%|          | 0/20 [00:00<?, ?it/s]Loss: 2.21e+09:   0%|          | 0/20 [17:43<?, ?it/s]tensor(0.5932) tensor(-1683049.8370)
+tensor(0.4329) tensor(-9956772.8265)
+tensor(0.4597) tensor(867078.9173)
+tensor(0.5159) tensor(-1049111.8510)
+tensor(0.4967) tensor(-1113800.6499)
+tensor([0.5602, 0.3072]) tensor([-1891388.0677,  -711543.1504])
+tensor([0.4210, 0.2553]) tensor([-755990.9747, -599488.2591])
+Loss: 2.21e+09:   5%|▌         | 1/20 [17:43<5:36:51, 1063.75s/it]Loss: 2.80e+05:   5%|▌         | 1/20 [35:22<5:36:51, 1063.75s/it]tensor(0.4977) tensor(-7744.9535)
+tensor(0.4991) tensor(-1258.8487)
+tensor(0.5062) tensor(2577.2846)
+tensor(0.4954) tensor(-12846.6610)
+tensor(0.5056) tensor(17856.7066)
+tensor([0.6300, 0.3390]) tensor([-2968.4231, -5577.4344])
+tensor([0.5232, 0.2485]) tensor([-11483.3798,  24889.1582])
+Loss: 2.80e+05:  10%|█         | 2/20 [35:22<5:18:17, 1060.97s/it]Loss: 4.06e+03:  10%|█         | 2/20 [53:01<5:18:17, 1060.97s/it]tensor(0.5024) tensor(-166786.2446)
+tensor(0.4971) tensor(-152259.4545)
+tensor(0.4998) tensor(-76634.2709)
+tensor(0.5051) tensor(-58227.2288)
+tensor(0.4925) tensor(-57446.9510)
+tensor([0.6906, 0.2314]) tensor([-49137.2337, -35422.3902])
+tensor([0.5256, 0.1836]) tensor([39606.9075, 20074.3546])
+Loss: 4.06e+03:  15%|█▌        | 3/20 [53:01<5:00:21, 1060.10s/it]Loss: 3.19e+03:  15%|█▌        | 3/20 [1:05:20<5:00:21, 1060.10s/it]tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+Loss: 3.19e+03:  20%|██        | 4/20 [1:05:20<4:08:50, 933.18s/it] Loss: 1.59e+08:  20%|██        | 4/20 [1:07:07<4:08:50, 933.18s/it]tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+Loss: 1.59e+08:  25%|██▌       | 5/20 [1:07:07<2:38:49, 635.29s/it]Loss: 6.31e+08:  25%|██▌       | 5/20 [1:08:54<2:38:49, 635.29s/it]tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+Loss: 6.31e+08:  30%|███       | 6/20 [1:08:54<1:46:20, 455.72s/it]Loss: 1.59e+08:  30%|███       | 6/20 [1:10:42<1:46:20, 455.72s/it]tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+Loss: 1.59e+08:  35%|███▌      | 7/20 [1:10:42<1:14:03, 341.82s/it]Loss: 6.31e+08:  35%|███▌      | 7/20 [1:12:29<1:14:03, 341.82s/it]tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+Loss: 6.31e+08:  40%|████      | 8/20 [1:12:29<53:26, 267.18s/it]  Loss: 1.59e+08:  40%|████      | 8/20 [1:14:16<53:26, 267.18s/it]tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+Loss: 1.59e+08:  45%|████▌     | 9/20 [1:14:16<39:49, 217.24s/it]Loss: 6.31e+08:  45%|████▌     | 9/20 [1:16:04<39:49, 217.24s/it]tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+Loss: 6.31e+08:  50%|█████     | 10/20 [1:16:04<30:33, 183.30s/it]Loss: 1.59e+08:  50%|█████     | 10/20 [1:17:51<30:33, 183.30s/it]tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+Loss: 1.59e+08:  55%|█████▌    | 11/20 [1:17:51<24:00, 160.03s/it]Loss: 6.31e+08:  55%|█████▌    | 11/20 [1:19:38<24:00, 160.03s/it]tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+Loss: 6.31e+08:  60%|██████    | 12/20 [1:19:38<19:11, 143.96s/it]Loss: 1.59e+08:  60%|██████    | 12/20 [1:21:25<19:11, 143.96s/it]tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+Loss: 1.59e+08:  65%|██████▌   | 13/20 [1:21:25<15:29, 132.83s/it]Loss: 6.31e+08:  65%|██████▌   | 13/20 [1:23:12<15:29, 132.83s/it]tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+Loss: 6.31e+08:  70%|███████   | 14/20 [1:23:12<12:30, 125.09s/it]Loss: 1.59e+08:  70%|███████   | 14/20 [1:25:00<12:30, 125.09s/it]tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+Loss: 1.59e+08:  75%|███████▌  | 15/20 [1:25:00<09:58, 119.68s/it]Loss: 6.31e+08:  75%|███████▌  | 15/20 [1:29:30<09:58, 119.68s/it]tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+Loss: 6.31e+08:  80%|████████  | 16/20 [1:29:30<11:00, 165.18s/it]Loss: 6.31e+08:  80%|████████  | 16/20 [1:43:12<11:00, 165.18s/it]tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+Loss: 6.31e+08:  85%|████████▌ | 17/20 [1:43:12<18:07, 362.44s/it]Loss: 1.68e+08:  85%|████████▌ | 17/20 [1:51:09<18:07, 362.44s/it]tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+tensor([0.9900, 0.0100]) tensor([0., 0.])
+Loss: 1.68e+08:  90%|█████████ | 18/20 [1:51:09<13:13, 396.86s/it]Loss: 1.15e+08:  90%|█████████ | 18/20 [1:52:55<13:13, 396.86s/it]tensor(0.9900) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.0100) tensor(0.)
+tensor(0.9900) tensor(0.)
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+tensor([0.0100, 0.9900]) tensor([0., 0.])
+Loss: 1.15e+08:  95%|█████████▌| 19/20 [1:52:55<05:09, 309.60s/it]Loss: 7.41e+08:  95%|█████████▌| 19/20 [2:10:19<05:09, 309.60s/it]tensor(0.1911) tensor(1113343.5303)
+tensor(0.8406) tensor(2093818.9244)
+tensor(0.8545) tensor(-197522.9026)
+tensor(0.9864) tensor(986408.6859)
+tensor(0.0919) tensor(947682.8316)
+tensor([0.7588, 0.0575]) tensor([51119.5972, 26149.1062])
+tensor([0.3667, 0.6762]) tensor([138179.1061,  19879.3603])
+Loss: 7.41e+08: 100%|██████████| 20/20 [2:10:19<00:00, 530.06s/it]Loss: 7.41e+08: 100%|██████████| 20/20 [2:10:19<00:00, 390.97s/it]
+
+Optimized parameter accuracy (target values are all 0.5):
+n:	tensor(0.1911)
+eta:	tensor(0.8406)
+s0:	tensor(0.8545)
+R:	tensor(0.9864)
+d:	tensor(0.0919)
+C:	tensor([0.7588, 0.0575])
+g:	tensor([0.3667, 0.6762])

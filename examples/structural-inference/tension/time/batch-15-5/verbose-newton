@@ -1,0 +1,66 @@
+torch.Size([4, 200, 35])
+Initial parameter values:
+n:	0.10
+eta:	0.10
+s0:	0.10
+R:	0.10
+d:	0.10
+
+Loss:    :   0%|          | 0/10 [00:00<?, ?it/s]Loss: 1.64e+08:   0%|          | 0/10 [03:20<?, ?it/s]n: tensor(0.5617) tensor(379438.1391)
+eta: tensor(0.5480) tensor(263043.6069)
+s0: tensor(0.6010) tensor(148081.0507)
+R: tensor(0.4799) tensor(684806.3361)
+d: tensor(0.4547) tensor(203675.0562)
+Loss: 1.64e+08:  10%|█         | 1/10 [03:20<30:08, 200.97s/it]Loss: 1.38e+06:  10%|█         | 1/10 [05:29<30:08, 200.97s/it]n: tensor(0.5215) tensor(0.0063)
+eta: tensor(0.5599) tensor(0.0101)
+s0: tensor(0.6459) tensor(0.0029)
+R: tensor(0.4723) tensor(0.0014)
+d: tensor(0.4763) tensor(0.0018)
+Loss: 1.38e+06:  20%|██        | 2/10 [05:29<21:06, 158.35s/it]Loss: 1.38e+06:  20%|██        | 2/10 [05:40<21:06, 158.35s/it]n: tensor(0.5215) tensor(0.0063)
+eta: tensor(0.5599) tensor(0.0101)
+s0: tensor(0.6459) tensor(0.0029)
+R: tensor(0.4723) tensor(0.0014)
+d: tensor(0.4763) tensor(0.0018)
+Loss: 1.38e+06:  30%|███       | 3/10 [05:40<10:36, 90.90s/it] Loss: 1.38e+06:  30%|███       | 3/10 [05:50<10:36, 90.90s/it]n: tensor(0.5215) tensor(0.0063)
+eta: tensor(0.5599) tensor(0.0101)
+s0: tensor(0.6459) tensor(0.0029)
+R: tensor(0.4723) tensor(0.0014)
+d: tensor(0.4763) tensor(0.0018)
+Loss: 1.38e+06:  40%|████      | 4/10 [05:50<05:55, 59.25s/it]Loss: 1.38e+06:  40%|████      | 4/10 [06:01<05:55, 59.25s/it]n: tensor(0.5215) tensor(0.0063)
+eta: tensor(0.5599) tensor(0.0101)
+s0: tensor(0.6459) tensor(0.0029)
+R: tensor(0.4723) tensor(0.0014)
+d: tensor(0.4763) tensor(0.0018)
+Loss: 1.38e+06:  50%|█████     | 5/10 [06:01<03:28, 41.76s/it]Loss: 1.38e+06:  50%|█████     | 5/10 [06:12<03:28, 41.76s/it]n: tensor(0.5215) tensor(0.0063)
+eta: tensor(0.5599) tensor(0.0101)
+s0: tensor(0.6459) tensor(0.0029)
+R: tensor(0.4723) tensor(0.0014)
+d: tensor(0.4763) tensor(0.0018)
+Loss: 1.38e+06:  60%|██████    | 6/10 [06:12<02:04, 31.14s/it]Loss: 1.38e+06:  60%|██████    | 6/10 [06:22<02:04, 31.14s/it]n: tensor(0.5215) tensor(0.0063)
+eta: tensor(0.5599) tensor(0.0101)
+s0: tensor(0.6459) tensor(0.0029)
+R: tensor(0.4723) tensor(0.0014)
+d: tensor(0.4763) tensor(0.0018)
+Loss: 1.38e+06:  70%|███████   | 7/10 [06:22<01:13, 24.44s/it]Loss: 1.38e+06:  70%|███████   | 7/10 [06:33<01:13, 24.44s/it]n: tensor(0.5215) tensor(0.0063)
+eta: tensor(0.5599) tensor(0.0101)
+s0: tensor(0.6459) tensor(0.0029)
+R: tensor(0.4723) tensor(0.0014)
+d: tensor(0.4763) tensor(0.0018)
+Loss: 1.38e+06:  80%|████████  | 8/10 [06:33<00:40, 20.06s/it]Loss: 1.38e+06:  80%|████████  | 8/10 [06:43<00:40, 20.06s/it]n: tensor(0.5215) tensor(0.0063)
+eta: tensor(0.5599) tensor(0.0101)
+s0: tensor(0.6459) tensor(0.0029)
+R: tensor(0.4723) tensor(0.0014)
+d: tensor(0.4763) tensor(0.0018)
+Loss: 1.38e+06:  90%|█████████ | 9/10 [06:43<00:17, 17.08s/it]Loss: 1.38e+06:  90%|█████████ | 9/10 [06:54<00:17, 17.08s/it]n: tensor(0.5215) tensor(0.0063)
+eta: tensor(0.5599) tensor(0.0101)
+s0: tensor(0.6459) tensor(0.0029)
+R: tensor(0.4723) tensor(0.0014)
+d: tensor(0.4763) tensor(0.0018)
+Loss: 1.38e+06: 100%|██████████| 10/10 [06:54<00:00, 15.13s/it]Loss: 1.38e+06: 100%|██████████| 10/10 [06:54<00:00, 41.47s/it]
+
+Optimized parameter accuracy:
+n:	0.52/0.50
+eta:	0.56/0.50
+s0:	0.65/0.50
+R:	0.47/0.50
+d:	0.48/0.50

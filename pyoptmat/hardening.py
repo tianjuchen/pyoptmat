@@ -61,6 +61,138 @@ class IsotropicHardeningModel(HardeningModel):
         super().__init__()
 
 
+class PowerlawHardeningModel(IsotropicHardeningModel):
+    """
+    Power law isotropic hardening, defined by
+    .. math::
+      \\sigma_{iso} = A * h ** p
+      \\dot{h} = \\left|\\dot{\\varepsilon}_{in}\\right|
+    Args:
+      A (|TP|): power law prefactor
+      p (|TP|): power law exponent
+    """
+
+    def __init__(
+        self,
+        A,
+        p,
+        A_scale=lambda x: x,
+        p_scale=lambda x: x,
+    ):
+        super().__init__()
+        self.A = A
+        self.p = p
+        self.A_scale = A_scale
+        self.p_scale = p_scale
+        self.tiny = torch.tensor(1.0e-10)
+
+    def value(self, h):
+        """
+        Map from the vector of internal variables to the isotropic hardening
+        value
+
+        Args:
+          h (torch.tensor):   the vector of internal variables for this model
+
+        Returns:
+          torch.tensor:       the isotropic hardening value
+        """
+        return self.A_scale(self.A) * (h[:, 0] + self.tiny) ** self.p_scale(self.p)
+
+    def dvalue(self, h):
+        """
+        Derivative of the map with respect to the internal variables
+
+        Args:
+          h (torch.tensor):   the vector of internal variables for this model
+
+        Returns:
+          torch.tensor:       the derivative of the isotropic hardening value
+                              with respect to the internal variables
+        """
+        return (
+            self.p_scale(self.p)
+            * self.A_scale(self.A)
+            * (h[:, 0] + self.tiny).unsqueeze(1) ** (self.p_scale(self.p) - 1)
+        )
+
+    @property
+    def nhist(self):
+        """
+        The number of internal variables: here just 1
+        """
+        return 1
+
+    def history_rate(self, s, h, t, ep, T, e):
+        """
+        The rate evolving the internal variables
+
+        Args:
+          s (torch.tensor):   stress
+          h (torch.tensor):   history
+          t (torch.tensor):   time
+          ep (torch.tensor):  the inelastic strain rate
+          T (torch.tensor):   the temperature
+          e (torch.tensor):   total strain rate
+
+        Returns:
+          torch.tensor:       internal variable rate
+        """
+        return torch.unsqueeze(torch.abs(ep), 1)
+
+    def dhistory_rate_dstress(self, s, h, t, ep, T, e):
+        """
+        The derivative of this history rate with respect to the stress
+
+        Args:
+          s (torch.tensor):   stress
+          h (torch.tensor):   history
+          t (torch.tensor):   time
+          ep (torch.tensor):  the inelastic strain rate
+          T (torch.tensor):   the temperature
+          e (torch.tensor):   total strain rate
+
+        Returns:
+          torch.tensor:       derivative with respect to stress
+        """
+        return torch.zeros_like(h)
+
+    def dhistory_rate_dhistory(self, s, h, t, ep, T, e):
+        """
+        The derivative of the history rate with respect to the internal variables
+
+        Args:
+          s (torch.tensor):   stress
+          h (torch.tensor):   history
+          t (torch.tensor):   time
+          ep (torch.tensor):  the inelastic strain rate
+          T (torch.tensor):   the temperature
+          e (torch.tensor):   total strain rate
+
+        Returns:
+          torch.tensor:       derivative with respect to history
+        """
+        return torch.unsqueeze(torch.zeros_like(h), 1)
+
+    def dhistory_rate_derate(self, s, h, t, ep, T, e):
+        """
+        The derivative of the history rate with respect to the inelastic
+        strain rate
+
+        Args:
+          s (torch.tensor):   stress
+          h (torch.tensor):   history
+          t (torch.tensor):   time
+          ep (torch.tensor):  the inelastic strain rate
+          T (torch.tensor):   the temperature
+          e (torch.tensor):   total strain rate
+
+        Returns:
+          torch.tensor:       derivative with respect to the inelastic rate
+        """
+        return torch.unsqueeze(torch.ones_like(h), 1)
+
+
 class VoceIsotropicHardeningModel(IsotropicHardeningModel):
     """
     Voce isotropic hardening, defined by

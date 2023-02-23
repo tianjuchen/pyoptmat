@@ -375,6 +375,55 @@ class ModelIntegrator(nn.Module):
             jit_mode=self.jit_mode,
         )
 
+    def solve_elastic(self, times, strains, temperatures):
+        """
+        Basic model definition: take time and strain rate and return stress
+
+        Args:
+          times:          input times, shape (ntime)
+          strains:        input strains, shape (ntime, nbatch)
+          temperatures:   input temperatures, shape (ntime, nbatch)
+
+        Returns:
+          y:          stacked [stress, history, damage] vector of shape
+                      `(ntime,nbatch,1+nhist+1)`
+        """
+        strain_rates = torch.cat(
+            (
+                torch.zeros(1, strains.shape[1], device=strains.device),
+                (strains[1:] - strains[:-1]) / (times[1:] - times[:-1]),
+            )
+        )
+        # Likely if this happens dt = 0
+        strain_rates[torch.isnan(strain_rates)] = 0
+
+        erate_interpolator = utility.CheaterBatchTimeSeriesInterpolator(
+            times, strain_rates
+        )
+        temperature_interpolator = utility.CheaterBatchTimeSeriesInterpolator(
+            times, temperatures
+        )
+
+        init = torch.zeros(times.shape[1], 2 + 0, device=strains.device)
+
+        emodel = StrainBasedModel(
+            self.model, erate_interpolator, temperature_interpolator
+        )
+
+        return self.imethod(
+            emodel,
+            init,
+            times,
+            method=self.method,
+            substep=self.substeps,
+            rtol=self.rtol,
+            atol=self.atol,
+            progress=self.progress,
+            miter=self.miter,
+            extra_params=self.extra_params,
+            jit_mode=self.jit_mode,
+        )
+
     def forward(self, t, y):
         """
         Evaluate both strain and stress control and paste into the right
@@ -522,3 +571,56 @@ class StressBasedModel(nn.Module):
         ydot[:, 0] = erate[:, 0]
 
         return ydot, J
+
+
+class SimpleelasticModel(nn.Module):
+    """
+    This object provides the standard strain-based rate form of a constitutive model
+
+    .. math::
+
+      \\dot{\\sigma} = E \\left(\\dot{\\varepsilon} - (1-d) \\dot{\\varepsilon}_{in} \\right)
+
+    Args:
+      E:                        Material Young's modulus
+      flowrule:                 :py:class:`pyoptmat.flowrules.FlowRule` defining the inelastic
+                                strain rate
+      dmodel (optional):        :py:class:`pyoptmat.damage.DamageModel` defining the damage variable
+                                  evolution rate, defaults to :py:class:`pyoptmat.damage.NoDamage`
+    """
+
+    def __init__(self, C, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.C = C
+
+    def forward(self, t, y, erate, T):
+
+        stress = y[:, 0].clone()
+        h = y[:, 1].clone()
+
+        result = torch.empty_like(y, device=y.device)
+        dresult = torch.zeros(y.shape + y.shape[1:], device=y.device)
+
+        strain = h + 1.0
+
+        result[:, 0] = 2 * self.C(T) * erate * (1 + 2 * strain ** (-3))
+        result[:, 1] = erate
+
+        dresult[:, 0, 0] = torch.zeros_like(h)
+        dresult[:, 0, 1] = -12 * self.C(T) * erate * strain ** (-4)
+
+        dresult[:, 1, 0] = torch.zeros_like(h)
+        dresult[:, 1, 1] = torch.zeros_like(h)
+
+        # Calculate the derivative wrt the strain rate, used in inverting
+        drate = torch.zeros_like(y)
+        drate[:, 0] = 2 * self.C(T) * (1 + 2 * strain ** (-3))
+        drate[:, 1] = torch.ones_like(h)
+
+        # Logically we should return the derivative wrt T, but right now
+        # we're not going to use it
+        Trate = torch.zeros_like(y)
+
+        # print(dresult)
+
+        return result, dresult, drate, Trate

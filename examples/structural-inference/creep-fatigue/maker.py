@@ -44,6 +44,12 @@ s0_true = 50.0
 C_true = np.array([10000.0, 5000.0, 500.0])
 g_true = np.array([200.0, 150.0, 5.0])
 
+C1_true = np.array([10000.0])
+g1_true = np.array([200.0])
+
+C2_true = np.array([10000.0, 5000.0])
+g2_true = np.array([200.0, 150.0])
+
 # Scale factor used in the model definition
 sf = 0.5
 
@@ -147,6 +153,190 @@ def make_model(E, n, eta, s0, R, d, C, g, device=torch.device("cpu"), **kwargs):
     return models.ModelIntegrator(model, **kwargs)
 
 
+def make_model_2(E, n, eta, s0, R, d, C, g, device=torch.device("cpu"), **kwargs):
+    """
+    Key function for the entire problem: given parameters generate the model
+    """
+    isotropic = hardening.VoceIsotropicHardeningModel(
+        CP(
+            R,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(R_true * (1 - sf), device=device),
+                    torch.tensor(R_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        CP(
+            d,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(d_true * (1 - sf), device=device),
+                    torch.tensor(d_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+    )
+    kinematic = hardening.ChabocheHardeningModel(
+        CP(
+            C,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(C2_true * (1 - sf), device=device),
+                    torch.tensor(C2_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        CP(
+            g,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(g2_true * (1 - sf), device=device),
+                    torch.tensor(g2_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+    )
+    flowrule = flowrules.IsoKinViscoplasticity(
+        CP(
+            n,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(n_true * (1 - sf), device=device),
+                    torch.tensor(n_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        CP(
+            eta,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(eta_true * (1 - sf), device=device),
+                    torch.tensor(eta_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        CP(
+            s0,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(s0_true * (1 - sf), device=device),
+                    torch.tensor(s0_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        isotropic,
+        kinematic,
+    )
+    model = models.InelasticModel(
+        CP(
+            E,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(E_true * (1 - sf), device=device),
+                    torch.tensor(E_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        flowrule,
+    )
+
+    return models.ModelIntegrator(model, **kwargs)
+
+
+def make_model_1(E, n, eta, s0, R, d, C, g, device=torch.device("cpu"), **kwargs):
+    """
+    Key function for the entire problem: given parameters generate the model
+    """
+    isotropic = hardening.VoceIsotropicHardeningModel(
+        CP(
+            R,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(R_true * (1 - sf), device=device),
+                    torch.tensor(R_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        CP(
+            d,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(d_true * (1 - sf), device=device),
+                    torch.tensor(d_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+    )
+    kinematic = hardening.ChabocheHardeningModel(
+        CP(
+            C,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(C1_true * (1 - sf), device=device),
+                    torch.tensor(C1_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        CP(
+            g,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(g1_true * (1 - sf), device=device),
+                    torch.tensor(g1_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+    )
+    flowrule = flowrules.IsoKinViscoplasticity(
+        CP(
+            n,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(n_true * (1 - sf), device=device),
+                    torch.tensor(n_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        CP(
+            eta,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(eta_true * (1 - sf), device=device),
+                    torch.tensor(eta_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        CP(
+            s0,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(s0_true * (1 - sf), device=device),
+                    torch.tensor(s0_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        isotropic,
+        kinematic,
+    )
+    model = models.InelasticModel(
+        CP(
+            E,
+            scaling=optimize.bounded_scale_function(
+                (
+                    torch.tensor(E_true * (1 - sf), device=device),
+                    torch.tensor(E_true * (1 + sf), device=device),
+                )
+            ),
+        ),
+        flowrule,
+    )
+
+    return models.ModelIntegrator(model, **kwargs)
+
+
+
+
 def load_subset_data(dataset, nsamples, device=device):
     """
     Load some subset of the total number of samples
@@ -195,8 +385,7 @@ if __name__ == "__main__":
 
     # Maximum strain in the cycle
     max_strains = np.logspace(np.log10(0.002), np.log10(0.02), 5)
-    print(np.linspace(np.log10(0.002), np.log10(0.02), 5))
-    sys.exit("stop")
+
     # Tension hold in the cycle
     tension_holds = np.array([1e-6, 60.0, 5 * 60.0, 60 * 60.0])
 
