@@ -1419,6 +1419,7 @@ class IsoKinViscoplasticity(FlowRule):
 
         return res
 
+
 class IsoKinPartialViscoplasticity(FlowRule):
     """
     Viscoplasticity with isotropic and kinematic hardening, defined as

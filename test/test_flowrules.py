@@ -80,7 +80,7 @@ class CommonFlowRule:
             self.erate,
         )[..., 0]
 
-        self.assertTrue(np.allclose(exact, numer, rtol=1.0e-2, atol = 1e-6))
+        self.assertTrue(np.allclose(exact, numer, rtol=1.0e-2, atol=1e-6))
 
 
 class TestPerfectViscoplasticity(unittest.TestCase, CommonFlowRule):
@@ -207,8 +207,8 @@ class TestKocksMeckingRegimeFlowRule(unittest.TestCase, CommonFlowRule):
             torch.tensor(
                 np.array(
                     [
-                        np.linspace(51, 110, self.nbatch)/10.0,
-                        np.linspace(-100, 210, self.nbatch)[::-1]/10.0,
+                        np.linspace(51, 110, self.nbatch) / 10.0,
+                        np.linspace(-100, 210, self.nbatch)[::-1] / 10.0,
                     ]
                 )
             ).T,
@@ -220,6 +220,7 @@ class TestKocksMeckingRegimeFlowRule(unittest.TestCase, CommonFlowRule):
         self.erate = torch.linspace(1e-2, 1e-3, self.nbatch)
 
         self.skip = False
+
 
 class TestSoftKocksMeckingRegimeFlowRule(unittest.TestCase, CommonFlowRule):
     def setUp(self):
@@ -266,7 +267,14 @@ class TestSoftKocksMeckingRegimeFlowRule(unittest.TestCase, CommonFlowRule):
         self.sf = 10.0
 
         self.model = flowrules.SoftKocksMeckingRegimeFlowRule(
-            self.model1, self.model2, self.g0, self.mu, self.b, self.eps0, self.k, self.sf
+            self.model1,
+            self.model2,
+            self.g0,
+            self.mu,
+            self.b,
+            self.eps0,
+            self.k,
+            self.sf,
         )
 
         self.s = torch.linspace(150, 200, self.nbatch)
@@ -287,6 +295,7 @@ class TestSoftKocksMeckingRegimeFlowRule(unittest.TestCase, CommonFlowRule):
         self.erate = torch.linspace(1e-2, 1e-3, self.nbatch)
 
         self.skip = False
+
 
 class TestSoftKocksMeckingRegimeFlowRuleComplex(unittest.TestCase, CommonFlowRule):
     def setUp(self):
@@ -314,14 +323,14 @@ class TestSoftKocksMeckingRegimeFlowRuleComplex(unittest.TestCase, CommonFlowRul
         )
         eps0_ri = 1e-10
         lmbda = 0.99
-        self.model1 = flowrules.RateIndependentFlowRuleWrapper(self.model1p, 
-                lmbda, eps0_ri)
-        
+        self.model1 = flowrules.RateIndependentFlowRuleWrapper(
+            self.model1p, lmbda, eps0_ri
+        )
+
         self.s02 = torch.tensor(50.0)
         self.model2 = flowrules.IsoKinViscoplasticity(
             CP(self.n1), CP(self.eta1), CP(0.0), self.iso1, self.kin1
         )
-
 
         self.mu = CP(1000.0)
         self.b = 1.0
@@ -332,7 +341,14 @@ class TestSoftKocksMeckingRegimeFlowRuleComplex(unittest.TestCase, CommonFlowRul
         self.sf = 10.0
 
         self.model = flowrules.SoftKocksMeckingRegimeFlowRule(
-            self.model1, self.model2, self.g0, self.mu, self.b, self.eps0, self.k, self.sf
+            self.model1,
+            self.model2,
+            self.g0,
+            self.mu,
+            self.b,
+            self.eps0,
+            self.k,
+            self.sf,
         )
 
         self.s = torch.linspace(150, 200, self.nbatch)
@@ -340,8 +356,8 @@ class TestSoftKocksMeckingRegimeFlowRuleComplex(unittest.TestCase, CommonFlowRul
             torch.tensor(
                 np.array(
                     [
-                        np.linspace(51, 110, self.nbatch)/10.0,
-                        np.linspace(-100, 210, self.nbatch)[::-1]/10.0,
+                        np.linspace(51, 110, self.nbatch) / 10.0,
+                        np.linspace(-100, 210, self.nbatch)[::-1] / 10.0,
                     ]
                 )
             ).T,
@@ -353,6 +369,7 @@ class TestSoftKocksMeckingRegimeFlowRuleComplex(unittest.TestCase, CommonFlowRul
         self.erate = torch.linspace(1e-2, 1e-3, self.nbatch)
 
         self.skip = False
+
 
 class TestIsoKinViscoplasticity(unittest.TestCase, CommonFlowRule):
     def setUp(self):
@@ -533,6 +550,7 @@ class TestIsoKinChabocheViscoplasticity(unittest.TestCase, CommonFlowRule):
         i2 = self.model.dflow_diso(self.s, self.h, self.t, self.T, self.erate)
 
         self.assertTrue(np.allclose(i1, i2, rtol=1.0e-4))
+
 
 class TestIsoKinPartialViscoplasticity(unittest.TestCase, CommonFlowRule):
     def setUp(self):
