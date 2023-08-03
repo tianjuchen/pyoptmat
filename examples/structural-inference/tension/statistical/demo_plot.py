@@ -17,6 +17,7 @@ from tqdm import trange
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+from matplotlib import RcParams
 
 import warnings
 
@@ -39,11 +40,24 @@ def make(n, eta, s0, R, d, **kwargs):
     )
 
 
+latex_style_times = RcParams(
+    {
+        "font.family": "serif",
+        "font.serif": ["Computer Modern Roman"],
+        "text.usetex": True,
+    }
+)
+
+path1 = "/mnt/c/Users/ladmin/Desktop/argonne/old_pyoptmat/pyoptmat/examples/"
+path2 = "structural-inference/tension/statistical/repeat/"
+save_path = path1 + path2
+
 if __name__ == "__main__":
+
     # 1) Load the data for the variance of interest,
     #    cut down to some number of samples, and flatten
-    scale = 0.05
-    nsamples = 10  # at each strain rate
+    scale = 0.15
+    nsamples = 30  # at each strain rate
     input_data = xr.open_dataset(os.path.join("..", "scale-%3.2f.nc" % scale))
     data, results, cycles, types, control = downsample(
         experiments.load_results(input_data, device=device),
@@ -56,24 +70,27 @@ if __name__ == "__main__":
     sampler = optimize.StatisticalModel(
         make,
         names,
-        [0.50, 0.49, 0.49, 0.48, 0.48],
-        [0.02, 0.02, 0.03, 0.05, 0.05],
+        [0.51, 0.50, 0.51, 0.52, 0.53],
+        [0.08, 0.08, 0.08, 0.12, 0.13],
         torch.tensor(1.0e-4),
     )
 
+    plt.style.use(latex_style_times)
     plt.figure()
     plt.plot(data[2, :, :nsamples].cpu(), results[:, :nsamples].cpu(), "k--")
-
-    nsamples = 100
+    ax = plt.gca()
+    
+    nsamples = 25
     alpha = 0.05 / 2
 
+    """
     times, strains, temps, cycles = experiments.make_tension_tests(
         torch.tensor([1.0e-2]), torch.tensor([0]), torch.tensor([0.5]), 200
     )
     data = torch.stack((times, temps, strains))
     control = torch.zeros(1, dtype=int)
     types = torch.zeros(1, dtype=int)
-
+    """
     stress_results = torch.zeros(nsamples, data.shape[1])
 
     for i in trange(nsamples):
@@ -84,6 +101,7 @@ if __name__ == "__main__":
     min_result = sresults[int(alpha * nsamples), :]
     max_result = sresults[int((1 - alpha) * nsamples), :]
 
+    
     (l,) = plt.plot(data[2, :, 0], mean_result, lw=4, color="k")
     p = plt.fill_between(data[2, :, 0], min_result, max_result, alpha=0.5, color="k")
 
@@ -93,10 +111,19 @@ if __name__ == "__main__":
             Line2D([0], [0], color="k", lw=4),
             Patch(facecolor="k", edgecolor=None, alpha=0.5),
         ],
-        ["Experimental data", "Model average", "Model 95% prediction interval"],
+        ["Experimental data", "Model average", "Model 95\% prediction interval"],
         loc="best",
+        prop={'size': 18}
     )
 
-    plt.xlabel("Strain (mm/mm)")
-    plt.ylabel("Stress (MPa)")
+    plt.xlabel("Strain", fontsize=30)
+    plt.ylabel("Stress (MPa)", fontsize=30)
+    plt.tick_params(axis="both", which="major", labelsize=30)
+    plt.locator_params(axis="both", nbins=4)
+    for axis in ["top", "bottom", "left", "right"]:
+        ax.spines[axis].set_linewidth(3)
+    ax.tick_params(width=3)
+    plt.tight_layout()
+    plt.savefig(save_path + "tension-confidence-{}.pdf".format(scale))
     plt.show()
+    plt.close()

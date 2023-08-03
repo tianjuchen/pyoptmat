@@ -12,10 +12,20 @@ sys.path.append("../../..")
 import xarray as xr
 import torch
 import matplotlib.pyplot as plt
+from matplotlib import RcParams
 
 
 # Use doubles
 torch.set_default_tensor_type(torch.DoubleTensor)
+
+
+latex_style_times = RcParams(
+    {
+        "font.family": "serif",
+        "font.serif": ["Computer Modern Roman"],
+        "text.usetex": True,
+    }
+)
 
 if __name__ == "__main__":
     scales = [0.0, 0.01, 0.05, 0.1, 0.15]
@@ -25,10 +35,22 @@ if __name__ == "__main__":
 
         strain = data.strain.data.reshape(-1, data.nrates, data.nsamples)
         stress = data.stress.data.reshape(-1, data.nrates, data.nsamples)
-
-        plt.plot(strain[:, 0], stress[:, 0])
-        plt.xlabel("Strain (mm/mm)")
-        plt.ylabel("Stress (MPa)")
-        plt.title("Scale = %3.2f" % scale)
+        plt.style.use(latex_style_times)
+        plt.figure(figsize=(6.4, 4.8))
+        plt.plot(strain[:, 0], stress[:, 0], lw=3)
+        plt.xlabel("Strain (mm/mm)", fontsize=27)
+        plt.ylabel("Stress (MPa)", fontsize=27)
+        plt.xticks(fontsize=27)
+        plt.yticks(fontsize=27)
+        plt.locator_params(axis='both', nbins=3)
+        plt.tick_params(axis="both", which="major", labelsize=27)
+        ax = plt.gca()
+        for axis in ["top", "bottom", "left", "right"]:
+            ax.spines[axis].set_linewidth(3)
+        ax.tick_params(width=3)
         plt.tight_layout()
+        # plt.title("Scale = %3.2f" % scale)
+        plt.tight_layout()
+        plt.savefig("tension-visualize-%3.2f.pdf" % scale)
         plt.show()
+        plt.close()

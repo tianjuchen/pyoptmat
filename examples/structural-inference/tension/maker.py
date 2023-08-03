@@ -169,13 +169,18 @@ if __name__ == "__main__":
             full_strains[:, :, i] = strains
 
             # True values are 0.5 with our scaling so this is easy
+            # model = make_model(
+                # torch.tensor(0.5, device=device),
+                # torch.tensor(ra.normal(0.5, scale), device=device),
+                # torch.tensor(ra.normal(0.5, scale), device=device),
+                # torch.tensor(ra.normal(0.5, scale), device=device),
+                # torch.tensor(ra.normal(0.5, scale), device=device),
+                # torch.tensor(ra.normal(0.5, scale), device=device),
+            # )
+            tjhe = torch.tensor(ra.normal(0.5, scale, size=(5,)), device=device)
             model = make_model(
                 torch.tensor(0.5, device=device),
-                torch.tensor(ra.normal(0.5, scale), device=device),
-                torch.tensor(ra.normal(0.5, scale), device=device),
-                torch.tensor(ra.normal(0.5, scale), device=device),
-                torch.tensor(ra.normal(0.5, scale), device=device),
-                torch.tensor(ra.normal(0.5, scale), device=device),
+                *tjhe,
             )
 
             with torch.no_grad():
@@ -209,4 +214,4 @@ if __name__ == "__main__":
             attrs={"scale": scale, "nrates": nrates, "nsamples": nsamples},
         )
 
-        ds.to_netcdf("scale-%3.2f.nc" % scale)
+        ds.to_netcdf("mnv-scale-%3.2f.nc" % scale)
