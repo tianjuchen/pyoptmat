@@ -71,8 +71,8 @@ if __name__ == "__main__":
         sampler = optimize.StatisticalModel(
             lambda *args, **kwargs: make(*args, block_size = time_chunk_size, **kwargs),
             names,
-            [0.52, 0.52, 0.52, 0.50, 0.52],
-            [0.08, 0.08, 0.08, 0.18, 0.22],
+            [1.0, 1.0, 0.0, 0.0, 0.36],
+            [6.3435, 0.1549, 0.1998, 0.2480, 0.1584],
             torch.tensor(1.0e-4),
         )
 
