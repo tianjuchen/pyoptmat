@@ -42,8 +42,7 @@ def calavg(mus):
 
 
 if __name__ == "__main__":
-
-    path1 = "/mnt/c/Users/ladmin/Desktop/argonne/old_pyoptmat/pyoptmat/examples/"
+    path1 = "/mnt/c/Users/chent/Desktop/pyoptmat/examples/"
     path2 = "structural-inference/tension/statistical/batch/random_select/"
     fpath = path1 + path2
 
@@ -58,13 +57,13 @@ if __name__ == "__main__":
 
     for fn, sz in zip(fnames, sample_size):
         df = read_file(fpath, fn)
-        plt.style.use(latex_style_times)
-        plt.plot(df/sz, lw=3, label=r"$n_{sample}$" + "={}".format(sz))
-    plt.yscale("log")
-    fsize = 30
+        # plt.style.use(latex_style_times)
+        plt.plot(df / sz, lw=3, label=r"$n_{sample}$" + r"$={}$".format(sz))
+    # plt.yscale("log")
+    fsize = 23
     ax = plt.gca()
     plt.xlabel("Step", fontsize=fsize)
-    plt.ylabel("ELBO", fontsize=fsize)
+    plt.ylabel(r"$ELBO$", fontsize=fsize)
     plt.tick_params(axis="both", which="major", labelsize=fsize)
     ax.locator_params(nbins=4, axis="x")
     plt.legend(frameon=False, prop={"size": 25})
@@ -72,6 +71,6 @@ if __name__ == "__main__":
         ax.spines[axis].set_linewidth(3)
     ax.tick_params(width=3)
     plt.tight_layout()
-    plt.savefig("loss-sample.pdf")
+    plt.savefig(fpath + "loss-sample.pdf")
     plt.show()
     plt.close()

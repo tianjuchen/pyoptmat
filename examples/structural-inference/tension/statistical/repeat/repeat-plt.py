@@ -16,9 +16,9 @@ from matplotlib import RcParams
 
 
 def read_file(path, file_name):
-    fnames = glob.glob(path + "*.csv")
+    fnames = glob.glob(path + "*.txt") # csv if needed
     for f in fnames:
-        ffname = os.path.basename(f).split(".csv")[0]
+        ffname = os.path.basename(f).split(".txt")[0] # csv if needed
         if ffname == file_name:
             df = pd.read_csv(f)
             return df
@@ -31,6 +31,7 @@ latex_style_times = RcParams(
         "text.usetex": True,
     }
 )
+
 
 def calavg(mus):
     avg_mu = []
@@ -47,7 +48,6 @@ def convert_string_to_data(df):
     return np.array(data).mean()
 
 
-
 def random_posterior():
     rnames = [r"$n$", r"$\eta$", r"$s_{0}$", r"$R$", r"$d$"]
     names = ["n", "eta", "s0", "R", "d"]
@@ -59,7 +59,6 @@ def random_posterior():
 
     mus = ["n_mu", "eta_mu", "s0_mu", "R_mu", "d_mu"]
     stds = ["n_std", "eta_std", "s0_std", "R_std", "d_std"]
-
 
     fs = ["res-0.05-30", "res-0.10-30", "res-0.15-30"]
 
@@ -74,7 +73,7 @@ def random_posterior():
         pdist = dist.Normal(mu, std).sample((amount,))
         p += list(pdist.numpy())
     tdist = dist.Normal(0.5, scale).sample((amount,))
-    
+
     params = []
     for n in rnames:
         params += [n] * amount
@@ -110,8 +109,7 @@ def random_posterior():
 
 
 def plot_loss():
-
-    path1 = "/mnt/c/Users/ladmin/Desktop/argonne/old_pyoptmat/pyoptmat/examples/"
+    path1 = "/mnt/c/Users/chent/Desktop/pyoptmat/examples/"
     path2 = "structural-inference/tension/statistical/repeat/"
 
     fpath = ["random-5/", "random-10/", "random-15/"]
@@ -121,11 +119,10 @@ def plot_loss():
 
     for i in range(len(fs)):
         df = read_file(path1 + path2 + fpath[i], fs[i])
-        
-        plt.style.use(latex_style_times)
+        # plt.style.use(latex_style_times)
         plt.plot(df, lw=4, label=r"$\sigma^{2}$" + "={}".format(scale[i]))
-        
-    plt.yscale("log")
+
+    # plt.yscale("log")
     ax = plt.gca()
     plt.xlabel("Step", fontsize=30)
     plt.ylabel(r"$ELBO$", fontsize=30)
@@ -136,13 +133,18 @@ def plot_loss():
         ax.spines[axis].set_linewidth(3)
     ax.tick_params(width=3)
     plt.tight_layout()
-    plt.savefig("random-loss.pdf")
+    plt.savefig(path1 + path2 + "random-loss.pdf")
     plt.show()
     plt.close()
     return fs
 
+
 if __name__ == "__main__":
 
+    _ = plot_loss()
+    
+    sys.exit("stop here")
+    
     rnames = [r"$n$", r"$\eta$", r"$s_{0}$", r"$R$", r"$d$"]
     names = ["n", "eta", "s0", "R", "d"]
 
@@ -160,4 +162,4 @@ if __name__ == "__main__":
     for n, m, s in zip(names, mus, stds):
         mu = convert_string_to_data(df[m])
         std = convert_string_to_data(df[s])
-        print("%s is (%.2f, %.2f)" %(n, mu, std))
+        print("%s is (%.2f, %.2f)" % (n, mu, std))

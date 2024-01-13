@@ -123,8 +123,8 @@ def dist_box(path, amount=1000, fs=27, fns="res-30-"):
 
 
 if __name__ == "__main__":
-    path1 = "/mnt/c/Users/ladmin/Desktop/argonne/old_pyoptmat/pyoptmat/examples/"
-    path2 = "structural-inference/creep-fatigue/statistical/hist/1e-3/"
+    path1 = "/mnt/c/Users/chent/Desktop/pyoptmat/examples/"
+    path2 = "structural-inference/creep-fatigue/statistical/hist/"
 
     path = path1 + path2
 
@@ -136,13 +136,13 @@ if __name__ == "__main__":
     
     for scale in scales:
         df = read_file(path, fns + scale, ftype=".txt")
-        plt.style.use(latex_style_times)
+        # plt.style.use(latex_style_times)
         plt.plot(df[:300], lw=3, label=r"$\sigma^{2}_{sample}$" + "={}".format(float(scale)))
-    plt.yscale("log")
-    fsize = 30
+    # plt.yscale("log")
+    fsize = 23
     ax = plt.gca()
     plt.xlabel("Step", fontsize=fsize)
-    plt.ylabel("ELBO", fontsize=fsize)
+    plt.ylabel(r"$ELBO$", fontsize=fsize)
     plt.tick_params(axis="both", which="major", labelsize=fsize)
     ax.locator_params(nbins=4, axis="x")
     plt.legend(frameon=False, prop={"size": 25})
@@ -150,6 +150,6 @@ if __name__ == "__main__":
         ax.spines[axis].set_linewidth(3)
     ax.tick_params(width=3)
     plt.tight_layout()
-    plt.savefig(path + "cyclic-random-loss.pdf")
+    # plt.savefig(path + "cyclic-random-loss.pdf")
     plt.show()
     plt.close()
