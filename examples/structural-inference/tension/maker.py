@@ -145,6 +145,13 @@ def downsample(rawdata, nkeep, nrates, nsamples):
     )
 
 
+def eyelist(data):
+    newdata = []
+    for i in range(data.shape[-1]):
+        newdata.append(list(data[:, i]))
+    return newdata
+
+
 if __name__ == "__main__":
     # Running this script will regenerate the data
     ntime = 200
@@ -164,23 +171,22 @@ if __name__ == "__main__":
         full_stresses = torch.empty_like(full_times)
         full_temperatures = torch.zeros_like(full_strains)
 
+        mean = [0.5] * 5
+        cov = eyelist(np.eye(5) * scale)
+        
         for i in tqdm.tqdm(range(nsamples)):
             full_times[:, :, i] = times
             full_strains[:, :, i] = strains
 
             # True values are 0.5 with our scaling so this is easy
-            # model = make_model(
-                # torch.tensor(0.5, device=device),
-                # torch.tensor(ra.normal(0.5, scale), device=device),
-                # torch.tensor(ra.normal(0.5, scale), device=device),
-                # torch.tensor(ra.normal(0.5, scale), device=device),
-                # torch.tensor(ra.normal(0.5, scale), device=device),
-                # torch.tensor(ra.normal(0.5, scale), device=device),
-            # )
-            tjhe = torch.tensor(ra.normal(0.5, scale, size=(5,)), device=device)
             model = make_model(
                 torch.tensor(0.5, device=device),
-                *tjhe,
+                # torch.tensor(ra.normal(0.5, scale), device=device),
+                # torch.tensor(ra.normal(0.5, scale), device=device),
+                # torch.tensor(ra.normal(0.5, scale), device=device),
+                # torch.tensor(ra.normal(0.5, scale), device=device),
+                # torch.tensor(ra.normal(0.5, scale), device=device),
+                *torch.tensor(np.random.multivariate_normal(mean, cov)),
             )
 
             with torch.no_grad():
@@ -214,4 +220,4 @@ if __name__ == "__main__":
             attrs={"scale": scale, "nrates": nrates, "nsamples": nsamples},
         )
 
-        ds.to_netcdf("mnv-scale-%3.2f.nc" % scale)
+        ds.to_netcdf("scale-%3.2f-2024.nc" % scale)
